@@ -102,15 +102,15 @@ struct DigitalPanelView: View {
             // 今日だけ大きな数字で。
             sectionLabel("REMAINING TODAY")
             HStack(alignment: .firstTextBaseline, spacing: 26) {
+                Spacer(minLength: 0)
                 bigValue(progress.remainingTodayText)
                 bigValue(percentText(progress.dayRemainingFraction))
             }
             RemainingBar(fraction: progress.dayRemainingFraction, accent: accent)
             AxisLabels(labels: ["24", "18", "12", "06", "0"])
 
+            // 週はバー無しの行だけ。今日と月のバーで大勢は分かる。
             compactRow("REMAINING IN WEEK", progress.remainingWeekText, progress.weekRemainingFraction)
-            RemainingBar(fraction: progress.weekRemainingFraction, accent: accent)
-            AxisLabels(labels: progress.weekAxisMilestones.map(String.init))
 
             compactRow("REMAINING IN MONTH", progress.remainingMonthText, progress.monthRemainingFraction)
             RemainingBar(fraction: progress.monthRemainingFraction, accent: accent)

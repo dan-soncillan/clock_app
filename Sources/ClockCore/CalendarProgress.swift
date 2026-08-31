@@ -60,11 +60,9 @@ public struct CalendarProgress: Equatable, Sendable {
         Double(remainingMinutesInMonth) / Double(daysInMonth * 1440)
     }
 
-    /// 今月の残りの表示文字列（例: `13D 08:40`）。
+    /// 今月の残りの表示文字列。日数だけを出す（例: `13D`）。
     public var remainingMonthText: String {
-        let days = remainingMinutesInMonth / 1440
-        let rest = remainingMinutesInMonth % 1440
-        return String(format: "%dD %02d:%02d", days, rest / 60, rest % 60)
+        "\(remainingMinutesInMonth / 1440)D"
     }
 
     /// 今月の残りバーの目盛り。月の日数を 4 等分した位置の値。
@@ -74,9 +72,10 @@ public struct CalendarProgress: Equatable, Sendable {
         }
     }
 
-    /// 今年の残りの表示文字列（例: `17W 122D`）。
+    /// 今年の残りの表示文字列（例: `17W | 122D`）。
+    /// 週と日は同じ残りの別表現なので、合算と誤読されないよう区切りを入れる。
     public var remainingYearText: String {
-        "\(weeksRemaining)W \(daysRemaining)D"
+        "\(weeksRemaining)W | \(daysRemaining)D"
     }
 
     /// 残り日数バーの目盛り。4 等分した位置に置く値を左から返す。

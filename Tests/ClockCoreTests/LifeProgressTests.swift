@@ -56,7 +56,7 @@ final class LifeProgressTests: XCTestCase {
     }
 
     func testCompactText() {
-        XCTAssertEqual(progress(at: date(2026, 8, 31)).remainingText, "47Y 16,996D")
+        XCTAssertEqual(progress(at: date(2026, 8, 31)).remainingText, "47Y | 16,996D")
     }
 
     func testAxisIsQuartered() {

@@ -314,6 +314,7 @@
   .big-row {
     display: flex;
     align-items: baseline;
+    justify-content: flex-end;
     gap: 26px;
   }
 
@@ -492,9 +493,6 @@
             <span class="label-value" id="weekPercent">0%</span>
           </span>
         </div>
-        <div class="bar"><span id="weekBar"></span></div>
-        <div class="axis"><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span></div>
-
         <div class="label-row">
           <span class="section-label">REMAINING IN MONTH</span>
           <span class="label-group">
@@ -802,14 +800,11 @@
     var weekRest = weekMinutes % 1440;
     write("remainWeek", weekDays + "D " + pad(Math.floor(weekRest / 60)) + ":" + pad(weekRest % 60));
     write("weekPercent", percentText(weekMinutes / 10080));
-    setBar("weekBar", weekMinutes / 10080);
 
     /* 今月の残り。 */
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
     var monthMinutes = (daysInMonth - now.getDate()) * 1440 + remainingMinutes;
-    var monthDays = Math.floor(monthMinutes / 1440);
-    var monthRest = monthMinutes % 1440;
-    write("remainMonth", monthDays + "D " + pad(Math.floor(monthRest / 60)) + ":" + pad(monthRest % 60));
+    write("remainMonth", Math.floor(monthMinutes / 1440) + "D");
     write("monthPercent", percentText(monthMinutes / (daysInMonth * 1440)));
     setBar("monthBar", monthMinutes / (daysInMonth * 1440));
     setAxis("monthAxis", daysInMonth);
@@ -826,7 +821,8 @@
     write("date", dateFormatter.format(now));
     write("weekDayNo", "WEEK " + Math.ceil(dayOfYear / 7));
     setAxis("yearAxis", daysInYear);
-    write("remainYear", Math.floor(daysLeft / 7) + "W " + daysLeft + "D");
+    /* 週と日は同じ残りの別表現。合算と誤読されないよう区切りを入れる。 */
+    write("remainYear", Math.floor(daysLeft / 7) + "W | " + daysLeft + "D");
     setBar("yearBar", daysLeft / daysInYear);
     write("yearPercent", percentText(daysLeft / daysInYear));
 
@@ -874,7 +870,7 @@
     write("lifeLabel", "REMAINING TO AGE " + TARGET_AGE);
     write(
       "remainLife",
-      Math.max(0, TARGET_AGE - age) + "Y " +
+      Math.max(0, TARGET_AGE - age) + "Y | " +
         Math.floor(remaining / 86400000).toLocaleString("en-US") + "D"
     );
     setBar("lifeBar", remaining / span);

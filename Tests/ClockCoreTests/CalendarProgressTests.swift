@@ -68,7 +68,7 @@ final class CalendarProgressTests: XCTestCase {
         let progress = CalendarProgress(date: date(hour: 11, minute: 25), timeZone: tokyo)
         XCTAssertEqual(progress.daysInMonth, 31)
         XCTAssertEqual(progress.remainingMinutesInMonth, 755)
-        XCTAssertEqual(progress.remainingMonthText, "0D 12:35")
+        XCTAssertEqual(progress.remainingMonthText, "0D")
         XCTAssertEqual(progress.monthAxisMilestones, [31, 23, 16, 8, 0])
     }
 
@@ -76,14 +76,14 @@ final class CalendarProgressTests: XCTestCase {
         let progress = CalendarProgress(date: date(month: 2, day: 1), timeZone: tokyo)
         XCTAssertEqual(progress.daysInMonth, 28)
         XCTAssertEqual(progress.remainingMinutesInMonth, 28 * 1440)
-        XCTAssertEqual(progress.remainingMonthText, "28D 00:00")
+        XCTAssertEqual(progress.remainingMonthText, "28D")
         XCTAssertEqual(progress.monthRemainingFraction, 1, accuracy: 0.0001)
         XCTAssertEqual(progress.monthAxisMilestones, [28, 21, 14, 7, 0])
     }
 
     func testCompactYearText() {
         let progress = CalendarProgress(date: date(hour: 11, minute: 25), timeZone: tokyo)
-        XCTAssertEqual(progress.remainingYearText, "17W 122D")
+        XCTAssertEqual(progress.remainingYearText, "17W | 122D")
     }
 
     func testYearAxisIsQuartered() {

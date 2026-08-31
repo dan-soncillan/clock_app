@@ -42,9 +42,12 @@ public struct CalendarProgress: Equatable, Sendable {
         }
     }
 
-    /// 残り時間の表示文字列（例: `12H 35M`）。
+    /// 残り時間の表示文字列。時刻と同じ「時:分」の形で出す（例: `12:35`）。
+    /// 0:00 ちょうどは丸一日残っているので `24:00`。
     public var remainingTodayText: String {
-        "\(remainingMinutesToday / 60)H \(remainingMinutesToday % 60)M"
+        let hours = remainingMinutesToday / 60
+        let minutes = remainingMinutesToday % 60
+        return String(format: "%02d:%02d", hours, minutes)
     }
 
     public init(date: Date, timeZone: TimeZone = .current) {

@@ -20,7 +20,7 @@ final class CalendarProgressTests: XCTestCase {
         let progress = CalendarProgress(date: date(hour: 11, minute: 25), timeZone: tokyo)
         XCTAssertEqual(progress.year, 2026)
         XCTAssertEqual(progress.remainingMinutesToday, 755)
-        XCTAssertEqual(progress.remainingTodayText, "12H 35M")
+        XCTAssertEqual(progress.remainingTodayText, "12:35")
         XCTAssertEqual(progress.dayOfYear, 243)
         XCTAssertEqual(progress.daysInYear, 365)
         XCTAssertEqual(progress.daysRemaining, 122)
@@ -31,6 +31,7 @@ final class CalendarProgressTests: XCTestCase {
     func testMidnightLeavesTheWholeDay() {
         let progress = CalendarProgress(date: date(month: 1, day: 1), timeZone: tokyo)
         XCTAssertEqual(progress.remainingMinutesToday, 1440)
+        XCTAssertEqual(progress.remainingTodayText, "24:00")
         XCTAssertEqual(progress.dayRemainingFraction, 1, accuracy: 0.0001)
         XCTAssertEqual(progress.dayOfYear, 1)
         XCTAssertEqual(progress.weekNumber, 1)
@@ -39,7 +40,7 @@ final class CalendarProgressTests: XCTestCase {
     func testLastMinuteOfTheYear() {
         let progress = CalendarProgress(date: date(month: 12, day: 31, hour: 23, minute: 59), timeZone: tokyo)
         XCTAssertEqual(progress.remainingMinutesToday, 1)
-        XCTAssertEqual(progress.remainingTodayText, "0H 1M")
+        XCTAssertEqual(progress.remainingTodayText, "00:01")
         XCTAssertEqual(progress.daysRemaining, 0)
         XCTAssertEqual(progress.weeksRemaining, 0)
         XCTAssertEqual(progress.yearRemainingFraction, 0, accuracy: 0.0001)

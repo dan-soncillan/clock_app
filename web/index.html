@@ -768,7 +768,7 @@
 
     /* 今日の残り。 */
     var remainingMinutes = 1440 - (hours * 60 + minutes);
-    write("remainToday", Math.floor(remainingMinutes / 60) + "H " + (remainingMinutes % 60) + "M");
+    write("remainToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
     setBar("dayBar", remainingMinutes / 1440);
 
     /* 今年の残り。 */

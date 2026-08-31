@@ -437,7 +437,7 @@
         </div>
 
         <div class="bar"><span id="yearBar"></span></div>
-        <div class="axis"><span>JAN</span><span>DEC</span></div>
+        <div class="axis"><span id="yearAxisStart">365</span><span>0</span></div>
       </section>
     </div>
   </div>
@@ -658,6 +658,7 @@
     write("date", dateFormatter.format(now));
     write("weekDayNo", "WEEK " + Math.ceil(dayOfYear / 7) + " · DAY " + dayOfYear + " OF " + daysInYear);
     write("remainingYearLabel", "REMAINING IN " + year);
+    write("yearAxisStart", String(daysInYear));
     write("weeksLeft", String(Math.floor(daysLeft / 7)));
     write("daysLeft", String(daysLeft));
     setBar("yearBar", daysLeft / daysInYear);

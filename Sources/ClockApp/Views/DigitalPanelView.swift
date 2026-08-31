@@ -104,7 +104,8 @@ struct DigitalPanelView: View {
             }
 
             RemainingBar(fraction: progress.yearRemainingFraction, accent: accent)
-            AxisLabels(labels: ["JAN", "DEC"])
+            // 上の残時間バーと同じく、右に向かって 0 に近づく残り日数の目盛り。
+            AxisLabels(labels: ["\(progress.daysInYear)", "0"])
         }
     }
 

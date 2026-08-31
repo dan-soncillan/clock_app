@@ -1,0 +1,54 @@
+import Foundation
+
+/// 「今日の残り」「今年の残り」を表す派生値。
+///
+/// デザインハンドオフの定義に一対一で対応させてある。
+/// - `remainingMinutesToday` = `1440 - (hour * 60 + minute)`
+/// - `dayOfYear` = 元日からの経過日数 + 1
+/// - `weekNumber` = `ceil(dayOfYear / 7)`
+/// - `weeksRemaining` = `floor(daysRemaining / 7)`
+public struct CalendarProgress: Equatable, Sendable {
+    public var year: Int
+    /// 今日の残り時間（分）。0:00 ちょうどなら 1440。
+    public var remainingMinutesToday: Int
+    /// 元日を 1 とした通日。
+    public var dayOfYear: Int
+    /// その年の日数（365 または 366）。
+    public var daysInYear: Int
+    /// 今年の残り日数。
+    public var daysRemaining: Int
+    /// 今年の残り週数（切り捨て）。
+    public var weeksRemaining: Int
+    /// 第何週か（切り上げ）。
+    public var weekNumber: Int
+
+    /// 残時間バーの塗り幅（0...1）。
+    public var dayRemainingFraction: Double {
+        Double(remainingMinutesToday) / 1440
+    }
+
+    /// 残日数バーの塗り幅（0...1）。
+    public var yearRemainingFraction: Double {
+        Double(daysRemaining) / Double(daysInYear)
+    }
+
+    /// 残り時間の表示文字列（例: `12H 35M`）。
+    public var remainingTodayText: String {
+        "\(remainingMinutesToday / 60)H \(remainingMinutesToday % 60)M"
+    }
+
+    public init(date: Date, timeZone: TimeZone = .current) {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = timeZone
+
+        let parts = calendar.dateComponents([.year, .hour, .minute], from: date)
+        year = parts.year ?? 0
+        remainingMinutesToday = 1440 - ((parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+
+        dayOfYear = calendar.ordinality(of: .day, in: .year, for: date) ?? 1
+        daysInYear = calendar.range(of: .day, in: .year, for: date)?.count ?? 365
+        daysRemaining = daysInYear - dayOfYear
+        weeksRemaining = daysRemaining / 7
+        weekNumber = Int((Double(dayOfYear) / 7).rounded(.up))
+    }
+}

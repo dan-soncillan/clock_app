@@ -1,32 +1,80 @@
 import Foundation
 import Observation
+import SwiftUI
+
+/// アクセント色の選択肢（デザイントークンで確定している 4 色）。
+enum AccentColor: String, CaseIterable, Identifiable {
+    case red
+    case orange
+    case blue
+    case green
+
+    var id: String { rawValue }
+
+    var color: Color {
+        switch self {
+        case .red: return Color(hex: 0xE5372C)
+        case .orange: return Color(hex: 0xF0522B)
+        case .blue: return Color(hex: 0x3B7DD8)
+        case .green: return Color(hex: 0x2FA36B)
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .red: return "レッド"
+        case .orange: return "オレンジ"
+        case .blue: return "ブルー"
+        case .green: return "グリーン"
+        }
+    }
+}
 
 /// ユーザー設定。値は UserDefaults を唯一の保存先とし、
 /// Observation には computed property 経由で変更を通知する。
 @Observable
 final class ClockSettings {
-    /// 24 時間表記にするか。
-    var uses24HourClock: Bool {
-        get { value(for: Keys.uses24HourClock, keyPath: \.uses24HourClock) }
-        set { setValue(newValue, for: Keys.uses24HourClock, keyPath: \.uses24HourClock) }
+    /// フッターで選べるフォントウェイト。
+    static let weightOptions = [400, 500, 600, 700, 800]
+
+    /// デジタル時刻・秒・文字盤数字の太さ。
+    var weight: Int {
+        get {
+            access(keyPath: \.weight)
+            return store.integer(forKey: Keys.weight)
+        }
+        set {
+            withMutation(keyPath: \.weight) { store.set(newValue, forKey: Keys.weight) }
+        }
     }
 
-    /// 秒を表示するか（デジタル表示・秒針の両方に効く）。
-    var showsSeconds: Bool {
-        get { value(for: Keys.showsSeconds, keyPath: \.showsSeconds) }
-        set { setValue(newValue, for: Keys.showsSeconds, keyPath: \.showsSeconds) }
+    /// 秒針とデジタル秒表示の ON/OFF。
+    var showSeconds: Bool {
+        get { flag(Keys.showSeconds, keyPath: \.showSeconds) }
+        set { setFlag(newValue, Keys.showSeconds, keyPath: \.showSeconds) }
     }
 
-    /// 秒針を連続的に動かすか。false なら 1 秒ごとに刻む。
-    var sweepingSeconds: Bool {
-        get { value(for: Keys.sweepingSeconds, keyPath: \.sweepingSeconds) }
-        set { setValue(newValue, for: Keys.sweepingSeconds, keyPath: \.sweepingSeconds) }
+    /// 秒針のスムーズ運針 ON/OFF。
+    var smoothSweep: Bool {
+        get { flag(Keys.smoothSweep, keyPath: \.smoothSweep) }
+        set { setFlag(newValue, Keys.smoothSweep, keyPath: \.smoothSweep) }
     }
 
-    /// アナログ時計に文字盤の数字を出すか。
-    var showsNumerals: Bool {
-        get { value(for: Keys.showsNumerals, keyPath: \.showsNumerals) }
-        set { setValue(newValue, for: Keys.showsNumerals, keyPath: \.showsNumerals) }
+    /// 24 時間表記 / 12 時間表記。
+    var use24h: Bool {
+        get { flag(Keys.use24h, keyPath: \.use24h) }
+        set { setFlag(newValue, Keys.use24h, keyPath: \.use24h) }
+    }
+
+    /// 秒針・秒数字・残りバー・同期表示の色。
+    var accent: AccentColor {
+        get {
+            access(keyPath: \.accent)
+            return store.string(forKey: Keys.accent).flatMap(AccentColor.init(rawValue:)) ?? .red
+        }
+        set {
+            withMutation(keyPath: \.accent) { store.set(newValue.rawValue, forKey: Keys.accent) }
+        }
     }
 
     @ObservationIgnored private let store: UserDefaults
@@ -34,28 +82,28 @@ final class ClockSettings {
     init(store: UserDefaults = .standard) {
         self.store = store
         store.register(defaults: [
-            Keys.uses24HourClock: true,
-            Keys.showsSeconds: true,
-            Keys.sweepingSeconds: true,
-            Keys.showsNumerals: false
+            Keys.weight: 700,
+            Keys.showSeconds: true,
+            Keys.smoothSweep: true,
+            Keys.use24h: true,
+            Keys.accent: AccentColor.red.rawValue
         ])
     }
 
-    private func value(for key: String, keyPath: KeyPath<ClockSettings, Bool>) -> Bool {
+    private func flag(_ key: String, keyPath: KeyPath<ClockSettings, Bool>) -> Bool {
         access(keyPath: keyPath)
         return store.bool(forKey: key)
     }
 
-    private func setValue(_ newValue: Bool, for key: String, keyPath: KeyPath<ClockSettings, Bool>) {
-        withMutation(keyPath: keyPath) {
-            store.set(newValue, forKey: key)
-        }
+    private func setFlag(_ newValue: Bool, _ key: String, keyPath: KeyPath<ClockSettings, Bool>) {
+        withMutation(keyPath: keyPath) { store.set(newValue, forKey: key) }
     }
 
     private enum Keys {
-        static let uses24HourClock = "uses24HourClock"
-        static let showsSeconds = "showsSeconds"
-        static let sweepingSeconds = "sweepingSeconds"
-        static let showsNumerals = "showsNumerals"
+        static let weight = "weight"
+        static let showSeconds = "showSeconds"
+        static let smoothSweep = "smoothSweep"
+        static let use24h = "use24h"
+        static let accent = "accent"
     }
 }

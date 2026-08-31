@@ -11,13 +11,14 @@ let package = Package(
         .library(name: "ClockCore", targets: ["ClockCore"])
     ],
     targets: [
-        // 時刻計算・フォーマットなど、UI に依存しない純粋なロジック。
+        // 時刻計算・カレンダー派生値・フォーマットなど、UI に依存しない純粋なロジック。
         .target(name: "ClockCore"),
 
         // SwiftUI アプリ本体。
         .executableTarget(
             name: "ClockApp",
-            dependencies: ["ClockCore"]
+            dependencies: ["ClockCore"],
+            resources: [.copy("Fonts")]
         ),
 
         .testTarget(

@@ -1,43 +1,65 @@
 import SwiftUI
 
-/// アプリ全体で使う色・角丸・余白の定義。
-/// 見た目を変えたいときはまずここを触る。
+/// デザインハンドオフの確定値。数値・色はここだけに置く。
 enum Theme {
+    // MARK: - 基準サイズ
+
+    /// デザイン基準のウィンドウサイズ。レイアウトはこの座標系で組み、
+    /// 実ウィンドウにはまとめて拡大縮小をかける。
+    static let canvasSize = CGSize(width: 980, height: 620)
+    /// 縮小の下限（デザイン指定は 0.7 倍程度まで）。
+    static let minimumScale: CGFloat = 0.7
+
+    static let titleBarHeight: CGFloat = 44
+    static let footerHeight: CGFloat = 46
+    static let dialSize: CGFloat = 512
+
     // MARK: - 色
 
-    /// 時計のアクセント（秒針・強調テキスト）。
-    static let accent = Color(red: 0.40, green: 0.62, blue: 1.00)
-    static let accentSecondary = Color(red: 0.62, green: 0.45, blue: 1.00)
+    static let windowBackground = Color(hex: 0x141618)
+    static let chromeBackground = Color(hex: 0x17191c)
 
-    static let accentGradient = LinearGradient(
-        colors: [accent, accentSecondary],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
+    static let dialGradient = RadialGradient(
+        colors: [Color(hex: 0x1c1f22), Color(hex: 0x131518)],
+        center: UnitPoint(x: 0.5, y: 0.3),
+        startRadius: 0,
+        endRadius: dialSize * 0.75
     )
 
-    /// ウインドウ背景。ライト/ダークどちらでも沈みすぎないよう控えめな階調にする。
-    static func windowBackground(for scheme: ColorScheme) -> LinearGradient {
-        let colors: [Color] = scheme == .dark
-            ? [Color(red: 0.07, green: 0.08, blue: 0.11), Color(red: 0.11, green: 0.10, blue: 0.16)]
-            : [Color(red: 0.95, green: 0.96, blue: 0.98), Color(red: 0.90, green: 0.92, blue: 0.97)]
-        return LinearGradient(colors: colors, startPoint: .topLeading, endPoint: .bottomTrailing)
+    static let borderStrong = Color.white.opacity(0.14)
+    static let borderWindow = Color.white.opacity(0.12)
+    static let borderChrome = Color.white.opacity(0.08)
+
+    static let textPrimary = Color.white
+    static let textSecondary = Color(hex: 0xc3c9ce)
+    static let textTertiary = Color(hex: 0x969da3)
+    static let textLabel = Color(hex: 0x7d848a)
+    static let textAxis = Color(hex: 0x6f767c)
+    static let textFooter = Color(hex: 0x8b9298)
+
+    static let tickMajor = Color.white
+    static let tickMinor = Color.white.opacity(0.4)
+
+    static let barTrack = Color.white.opacity(0.1)
+    static let segmentTrack = Color.white.opacity(0.06)
+    static let segmentHover = Color.white.opacity(0.12)
+
+    // MARK: - 角丸
+
+    static let barCornerRadius: CGFloat = 2
+    static let segmentCornerRadius: CGFloat = 8
+    static let segmentItemCornerRadius: CGFloat = 6
+}
+
+extension Color {
+    /// `0xRRGGBB` からの生成。デザイントークンをそのまま書き写すために使う。
+    init(hex: UInt32) {
+        self.init(
+            .sRGB,
+            red: Double((hex >> 16) & 0xff) / 255,
+            green: Double((hex >> 8) & 0xff) / 255,
+            blue: Double(hex & 0xff) / 255,
+            opacity: 1
+        )
     }
-
-    /// カードの縁取り。ガラス面のハイライトを表現する。
-    static func cardStroke(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.white.opacity(0.12) : Color.white.opacity(0.65)
-    }
-
-    static func shadow(for scheme: ColorScheme) -> Color {
-        scheme == .dark ? Color.black.opacity(0.45) : Color.black.opacity(0.12)
-    }
-
-    // MARK: - 形状・余白
-
-    static let cardCornerRadius: CGFloat = 28
-    static let cardPadding: CGFloat = 28
-    static let contentSpacing: CGFloat = 20
-
-    /// 横並びから縦並びに切り替える幅のしきい値。
-    static let stackBreakpoint: CGFloat = 720
 }

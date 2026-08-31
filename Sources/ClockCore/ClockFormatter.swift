@@ -1,80 +1,98 @@
 import Foundation
 
-/// デジタル表示用の文字列を組み立てる。
+/// デジタル表示に必要な文字列を組み立てる。
 ///
-/// 桁が入れ替わってもレイアウトが揺れないよう、時・分・秒は個別の文字列として
-/// 返し、区切りのコロンは View 側で描画する。
+/// 時刻は `HH:MM` と `SS` に分けて返す。デザイン上この 2 つは
+/// サイズも色も異なる別要素なので、View 側で連結しない前提。
 public struct ClockFormatter: Sendable {
     public var timeZone: TimeZone
+    /// 曜日・日付の表記に使うロケール。デザイン指定は `en_US`。
     public var locale: Locale
-    /// `true` で 24 時間表記、`false` で 12 時間表記（AM/PM 付き）。
+    /// `true` で 24 時間表記、`false` で 12 時間表記。
     public var uses24HourClock: Bool
 
-    public init(timeZone: TimeZone = .current, locale: Locale = .current, uses24HourClock: Bool = true) {
+    public init(
+        timeZone: TimeZone = .current,
+        locale: Locale = Locale(identifier: "en_US"),
+        uses24HourClock: Bool = true
+    ) {
         self.timeZone = timeZone
         self.locale = locale
         self.uses24HourClock = uses24HourClock
     }
 
-    /// 分解済みのデジタル表示。
-    public struct DigitalTime: Equatable, Sendable {
-        public var hour: String
-        public var minute: String
-        public var second: String
-        /// 12 時間表記のときだけ "AM" / "PM" が入る。
-        public var period: String?
-
-        public init(hour: String, minute: String, second: String, period: String?) {
-            self.hour = hour
-            self.minute = minute
-            self.second = second
-            self.period = period
-        }
-    }
-
-    public func digitalTime(for date: Date) -> DigitalTime {
+    private var calendar: Calendar {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
-
-        let parts = calendar.dateComponents([.hour, .minute, .second], from: date)
-        let rawHour = parts.hour ?? 0
-        let minute = parts.minute ?? 0
-        let second = parts.second ?? 0
-
-        if uses24HourClock {
-            return DigitalTime(
-                hour: Self.twoDigits(rawHour),
-                minute: Self.twoDigits(minute),
-                second: Self.twoDigits(second),
-                period: nil
-            )
-        }
-
-        let hour12 = rawHour % 12 == 0 ? 12 : rawHour % 12
-        return DigitalTime(
-            hour: Self.twoDigits(hour12),
-            minute: Self.twoDigits(minute),
-            second: Self.twoDigits(second),
-            period: rawHour < 12 ? "AM" : "PM"
-        )
+        calendar.locale = locale
+        return calendar
     }
 
-    /// 「2026年8月31日 月曜日」のような、ロケールに沿った日付文字列。
+    /// 大きく表示する `HH:MM`。
+    ///
+    /// 12 時間表記でも桁数を変えない（`01`〜`12`）。デザインが等幅数字を
+    /// 前提にしているため、桁数が揺れると隣の秒の位置が動いてしまう。
+    public func hourMinuteText(for date: Date) -> String {
+        let parts = calendar.dateComponents([.hour, .minute], from: date)
+        let rawHour = parts.hour ?? 0
+        let hour = uses24HourClock ? rawHour : (rawHour % 12 == 0 ? 12 : rawHour % 12)
+        return "\(Self.twoDigits(hour)):\(Self.twoDigits(parts.minute ?? 0))"
+    }
+
+    /// アクセント色で添える `SS`。
+    public func secondText(for date: Date) -> String {
+        Self.twoDigits(calendar.component(.second, from: date))
+    }
+
+    /// 曜日（大文字）。例: `MONDAY`
+    public func weekdayText(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = locale
+        formatter.timeZone = timeZone
+        formatter.setLocalizedDateFormatFromTemplate("EEEE")
+        return formatter.string(from: date).uppercased(with: locale)
+    }
+
+    /// 日付。例: `August 31, 2026`
     public func dateText(for date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = locale
         formatter.timeZone = timeZone
-        formatter.setLocalizedDateFormatFromTemplate("yMMMMd EEEE")
+        formatter.setLocalizedDateFormatFromTemplate("MMMMdyyyy")
         return formatter.string(from: date)
     }
 
-    /// ステータス行に出すタイムゾーン名（例: "日本標準時" / "GMT+9"）。
-    /// 夏時間の期間はサマータイム側の名称を返す。
+    /// タイムゾーン行。例: `TOKYO · JST · UTC+09:00`
     public func timeZoneText(for date: Date) -> String {
-        let style: NSTimeZone.NameStyle = timeZone.isDaylightSavingTime(for: date)
-            ? .daylightSaving
-            : .standard
-        return timeZone.localizedName(for: style, locale: locale) ?? timeZone.identifier
+        [cityText, abbreviationText(for: date), utcOffsetText(for: date)]
+            .joined(separator: " · ")
+    }
+
+    /// 識別子の末尾を都市名として使う。例: `Asia/Tokyo` → `TOKYO`
+    private var cityText: String {
+        let component = timeZone.identifier.split(separator: "/").last.map(String.init)
+            ?? timeZone.identifier
+        return component.replacingOccurrences(of: "_", with: " ").uppercased(with: locale)
+    }
+
+    /// 略称。例: `JST`
+    ///
+    /// `TimeZone.abbreviation()` は環境によって `GMT+9` を返すことがあるため、
+    /// 表示用には DateFormatter の `zzz` から取る。
+    private func abbreviationText(for date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = timeZone
+        formatter.dateFormat = "zzz"
+        return formatter.string(from: date)
+    }
+
+    /// UTC からのオフセット。例: `UTC+09:00`
+    private func utcOffsetText(for date: Date) -> String {
+        let offset = timeZone.secondsFromGMT(for: date)
+        let sign = offset < 0 ? "-" : "+"
+        let magnitude = abs(offset)
+        return "UTC\(sign)\(Self.twoDigits(magnitude / 3600)):\(Self.twoDigits(magnitude % 3600 / 60))"
     }
 
     private static func twoDigits(_ value: Int) -> String {

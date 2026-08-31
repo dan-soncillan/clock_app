@@ -181,8 +181,19 @@
 
   .time-row {
     display: flex;
-    align-items: baseline;
+    align-items: stretch;
     gap: 10px;
+  }
+
+  /* AM/PM は秒の上に積む。横に並べると 12 時間表記のとき行が伸びて
+     右の日付情報が入らなくなる。 */
+  .sec-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 6px;
+    padding-bottom: 2px;
   }
 
   .hhmm {
@@ -206,7 +217,6 @@
     font-weight: 600;
     letter-spacing: 0.08em;
     color: var(--text-tertiary);
-    margin-left: 2px;
   }
 
   .period[hidden] { display: none; }
@@ -262,11 +272,22 @@
     color: var(--text-axis);
   }
 
-  /* 曜日と日付は1行に。文字の大きさと色の差で読み分ける。 */
-  .day-line {
+  /* 時刻の右に日付情報を並べる。 */
+  .time-line {
     display: flex;
-    align-items: baseline;
-    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .date-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    min-width: 0;
+    white-space: nowrap;
+    text-align: right;
   }
 
   .weekday {
@@ -288,8 +309,6 @@
     letter-spacing: 0.12em;
     color: var(--text-label);
   }
-
-  .remaining-year { padding-top: 4px; }
 
   .counts {
     display: flex;
@@ -454,10 +473,20 @@
       <section class="block">
         <div class="zone" id="zone">&nbsp;</div>
 
-        <div class="time-row" role="timer" aria-live="off" id="timeRow">
-          <div class="hhmm" id="hhmm">00:00</div>
-          <div class="ss" id="ss">00</div>
-          <div class="period" id="period" hidden>AM</div>
+        <div class="time-line">
+          <div class="time-row" role="timer" aria-live="off" id="timeRow">
+            <div class="hhmm" id="hhmm">00:00</div>
+            <div class="sec-stack">
+              <div class="period" id="period" hidden>AM</div>
+              <div class="ss" id="ss">00</div>
+            </div>
+          </div>
+
+          <div class="date-info">
+            <span class="weekday" id="weekday">MON</span>
+            <span class="date" id="date">August 31, 2026</span>
+            <span class="week-day-no" id="weekDayNo">WEEK 1</span>
+          </div>
         </div>
         <p class="visually-hidden" id="spokenTime" aria-live="polite"></p>
 
@@ -470,19 +499,22 @@
         </div>
         <div class="bar"><span id="dayBar"></span></div>
         <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
+
+        <div class="label-row">
+          <span class="section-label">REMAINING IN WEEK</span>
+          <span class="label-group">
+            <span class="label-value" id="remainWeek">0D 00:00</span>
+            <span class="label-value" id="weekPercent">0%</span>
+          </span>
+        </div>
+        <div class="bar"><span id="weekBar"></span></div>
+        <div class="axis"><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span></div>
       </section>
 
       <div class="rule"></div>
 
       <section class="block">
-        <div class="day-line">
-          <span class="weekday" id="weekday">MONDAY</span>
-          <span class="date" id="date">August 31, 2026</span>
-        </div>
-
-        <div class="week-day-no" id="weekDayNo">WEEK 1 · DAY 1 OF 365</div>
-
-        <div class="label-row remaining-year">
+        <div class="label-row">
           <span class="section-label" id="remainingYearLabel">REMAINING IN 2026</span>
         </div>
 
@@ -713,9 +745,9 @@
 
   var pad = function (value) { return value < 10 ? "0" + value : String(value); };
 
-  var weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "long" });
+  var weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "short" });
   var dateFormatter = new Intl.DateTimeFormat("en-US", {
-    month: "long", day: "numeric", year: "numeric"
+    month: "short", day: "numeric", year: "numeric"
   });
 
   /* 識別子の末尾を都市名として使う。例: Asia/Tokyo → TOKYO */
@@ -782,6 +814,15 @@
     write("todayPercent", percentText(remainingMinutes / 1440));
     setBar("dayBar", remainingMinutes / 1440);
 
+    /* 今週の残り。週は月曜 0:00 に始まり、次の月曜 0:00 で終わる。 */
+    var daysToMonday = (8 - now.getDay()) % 7 || 7;
+    var weekMinutes = daysToMonday * 1440 - (hours * 60 + minutes);
+    var weekDays = Math.floor(weekMinutes / 1440);
+    var weekRest = weekMinutes % 1440;
+    write("remainWeek", weekDays + "D " + pad(Math.floor(weekRest / 60)) + ":" + pad(weekRest % 60));
+    write("weekPercent", percentText(weekMinutes / 10080));
+    setBar("weekBar", weekMinutes / 10080);
+
     /* 今年の残り。 */
     var year = now.getFullYear();
     var startOfYear = new Date(year, 0, 1);
@@ -792,7 +833,7 @@
 
     write("weekday", weekdayFormatter.format(now).toUpperCase());
     write("date", dateFormatter.format(now));
-    write("weekDayNo", "WEEK " + Math.ceil(dayOfYear / 7) + " · DAY " + dayOfYear + " OF " + daysInYear);
+    write("weekDayNo", "WEEK " + Math.ceil(dayOfYear / 7));
     write("remainingYearLabel", "REMAINING IN " + year);
     setAxis("yearAxis", daysInYear);
     write("weeksLeft", String(Math.floor(daysLeft / 7)));

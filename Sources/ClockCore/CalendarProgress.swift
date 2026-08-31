@@ -21,6 +21,8 @@ public struct CalendarProgress: Equatable, Sendable {
     public var weeksRemaining: Int
     /// 第何週か（切り上げ）。
     public var weekNumber: Int
+    /// 今週の残り分。週は月曜 0:00 に始まり、次の月曜 0:00 で終わる。
+    public var remainingMinutesInWeek: Int
 
     /// 残時間バーの塗り幅（0...1）。
     public var dayRemainingFraction: Double {
@@ -30,6 +32,23 @@ public struct CalendarProgress: Equatable, Sendable {
     /// 残日数バーの塗り幅（0...1）。
     public var yearRemainingFraction: Double {
         Double(daysRemaining) / Double(daysInYear)
+    }
+
+    /// 今週の残りバーの塗り幅（0...1）。1 週間は 10,080 分。
+    public var weekRemainingFraction: Double {
+        Double(remainingMinutesInWeek) / 10_080
+    }
+
+    /// 今週の残りの表示文字列（例: `6D 08:40`）。
+    public var remainingWeekText: String {
+        let days = remainingMinutesInWeek / 1440
+        let rest = remainingMinutesInWeek % 1440
+        return String(format: "%dD %02d:%02d", days, rest / 60, rest % 60)
+    }
+
+    /// 今週の残りバーの目盛り。1 日刻みで 7 から 0 まで。
+    public var weekAxisMilestones: [Int] {
+        Array(stride(from: 7, through: 0, by: -1))
     }
 
     /// 残り日数バーの目盛り。4 等分した位置に置く値を左から返す。
@@ -57,6 +76,12 @@ public struct CalendarProgress: Equatable, Sendable {
         let parts = calendar.dateComponents([.year, .hour, .minute], from: date)
         year = parts.year ?? 0
         remainingMinutesToday = 1440 - ((parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+
+        // weekday は 1=日曜〜7=土曜。次の月曜 0:00 までの日数に読み替える。
+        let weekday = calendar.component(.weekday, from: date)
+        var daysToMonday = (9 - weekday) % 7
+        if daysToMonday == 0 { daysToMonday = 7 }
+        remainingMinutesInWeek = daysToMonday * 1440 - ((parts.hour ?? 0) * 60 + (parts.minute ?? 0))
 
         dayOfYear = calendar.ordinality(of: .day, in: .year, for: date) ?? 1
         daysInYear = calendar.range(of: .day, in: .year, for: date)?.count ?? 365

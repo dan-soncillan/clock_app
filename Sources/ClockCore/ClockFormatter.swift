@@ -52,21 +52,22 @@ public struct ClockFormatter: Sendable {
         Self.twoDigits(calendar.component(.second, from: date))
     }
 
-    /// 曜日（大文字）。例: `MONDAY`
+    /// 曜日（短縮・大文字）。例: `MON`
+    /// 時計の横の狭い場所に置くので短縮形にしている。
     public func weekdayText(for date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = locale
         formatter.timeZone = timeZone
-        formatter.setLocalizedDateFormatFromTemplate("EEEE")
+        formatter.setLocalizedDateFormatFromTemplate("EEE")
         return formatter.string(from: date).uppercased(with: locale)
     }
 
-    /// 日付。例: `August 31, 2026`
+    /// 日付。例: `Aug 31, 2026`
     public func dateText(for date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = locale
         formatter.timeZone = timeZone
-        formatter.setLocalizedDateFormatFromTemplate("MMMMdyyyy")
+        formatter.setLocalizedDateFormatFromTemplate("MMMdyyyy")
         return formatter.string(from: date)
     }
 

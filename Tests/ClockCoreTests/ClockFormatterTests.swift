@@ -55,8 +55,8 @@ final class ClockFormatterTests: XCTestCase {
     func testWeekdayAndDateFollowTheDesign() {
         let formatter = ClockFormatter(timeZone: tokyo)
         let moment = date(hour: 11, minute: 25, second: 39)
-        XCTAssertEqual(formatter.weekdayText(for: moment), "MONDAY")
-        XCTAssertEqual(formatter.dateText(for: moment), "August 31, 2026")
+        XCTAssertEqual(formatter.weekdayText(for: moment), "MON")
+        XCTAssertEqual(formatter.dateText(for: moment), "Aug 31, 2026")
     }
 
     func testTimeZoneLineMatchesTheDesign() {

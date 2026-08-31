@@ -46,6 +46,23 @@ final class CalendarProgressTests: XCTestCase {
         XCTAssertEqual(progress.yearRemainingFraction, 0, accuracy: 0.0001)
     }
 
+    func testWeekRemainderCountsDownToMonday() {
+        // 2026-08-31 は月曜。11:25 の時点で残りは 6日と 12:35。
+        let monday = CalendarProgress(date: date(hour: 11, minute: 25), timeZone: tokyo)
+        XCTAssertEqual(monday.remainingMinutesInWeek, 7 * 1440 - 685)
+        XCTAssertEqual(monday.remainingWeekText, "6D 12:35")
+        XCTAssertEqual(monday.weekRemainingFraction, 0.932, accuracy: 0.001)
+
+        // 日曜 23:59 は週の最後の1分。
+        let sundayNight = CalendarProgress(
+            date: date(month: 9, day: 6, hour: 23, minute: 59), timeZone: tokyo
+        )
+        XCTAssertEqual(sundayNight.remainingMinutesInWeek, 1)
+        XCTAssertEqual(sundayNight.remainingWeekText, "0D 00:01")
+
+        XCTAssertEqual(monday.weekAxisMilestones, [7, 6, 5, 4, 3, 2, 1, 0])
+    }
+
     func testYearAxisIsQuartered() {
         let progress = CalendarProgress(date: date(hour: 11, minute: 25), timeZone: tokyo)
         XCTAssertEqual(progress.yearAxisMilestones, [365, 274, 183, 91, 0])

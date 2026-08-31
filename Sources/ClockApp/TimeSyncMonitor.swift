@@ -12,7 +12,8 @@ final class TimeSyncMonitor {
     @ObservationIgnored private let interval: TimeInterval
     @ObservationIgnored private var isChecking = false
 
-    init(client: SNTPClient = SNTPClient(), interval: TimeInterval = 15 * 60) {
+    // App の初期化から呼べるよう、生成だけはメインアクター外でも行えるようにする。
+    nonisolated init(client: SNTPClient = SNTPClient(), interval: TimeInterval = 15 * 60) {
         self.client = client
         self.interval = interval
     }

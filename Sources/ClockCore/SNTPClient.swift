@@ -74,7 +74,8 @@ public actor SNTPClient {
     // MARK: - NWConnection の async ラッパー
 
     private static func start(_ connection: NWConnection, on queue: DispatchQueue) async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        // 戻り値が Void のときは型注釈がないと T を推論できない。
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let box = ContinuationBox(continuation)
             connection.stateUpdateHandler = { state in
                 switch state {
@@ -94,7 +95,7 @@ public actor SNTPClient {
     }
 
     private static func send(_ data: Data, on connection: NWConnection) async throws {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             let box = ContinuationBox(continuation)
             connection.send(content: data, completion: .contentProcessed { error in
                 if let error {
@@ -107,7 +108,7 @@ public actor SNTPClient {
     }
 
     private static func receive(on connection: NWConnection) async throws -> Data {
-        try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Data, Error>) in
             let box = ContinuationBox(continuation)
             connection.receiveMessage { data, _, _, error in
                 if let error {

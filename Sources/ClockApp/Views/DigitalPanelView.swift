@@ -85,7 +85,8 @@ struct DigitalPanelView: View {
 
     private var dateBlock: some View {
         VStack(alignment: .leading, spacing: 12) {
-            VStack(alignment: .leading, spacing: 5) {
+            // 曜日と日付は 1 行に。文字の大きさと色の差で読み分ける。
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(formatter.weekdayText(for: date))
                     .font(AppFont.archivo(size: 20, weight: 600))
                     .tracking(em: 0.02, size: 20)
@@ -103,9 +104,10 @@ struct DigitalPanelView: View {
             sectionLabel("REMAINING IN \(progress.year)")
                 .padding(.top, 4)
 
-            HStack(spacing: 26) {
+            HStack(alignment: .firstTextBaseline, spacing: 26) {
                 remainingValue(progress.weeksRemaining, unit: "WEEKS")
                 remainingValue(progress.daysRemaining, unit: "DAYS")
+                percentLabel(progress.yearRemainingFraction)
             }
 
             RemainingBar(fraction: progress.yearRemainingFraction, accent: accent)
@@ -120,9 +122,10 @@ struct DigitalPanelView: View {
         VStack(alignment: .leading, spacing: 12) {
             sectionLabel("REMAINING TO AGE \(life.targetAge)")
 
-            HStack(spacing: 26) {
+            HStack(alignment: .firstTextBaseline, spacing: 26) {
                 remainingValue(life.yearsRemaining, unit: "YEARS")
                 remainingValue(life.daysRemaining, unit: "DAYS", grouped: true)
+                percentLabel(life.remainingFraction)
             }
 
             RemainingBar(fraction: life.remainingFraction, accent: accent)
@@ -143,6 +146,16 @@ struct DigitalPanelView: View {
                 .tracking(em: 0.14, size: 12)
                 .foregroundStyle(Theme.textTertiary)
         }
+    }
+
+    /// バーが示す残りの割合を数値でも添える。
+    private func percentLabel(_ fraction: Double) -> some View {
+        let percent = Int((min(max(fraction, 0), 1) * 100).rounded())
+        return Text("\(percent)%")
+            .font(AppFont.archivo(size: 12, weight: 500))
+            .tracking(em: 0.14, size: 12)
+            .monospacedDigit()
+            .foregroundStyle(Theme.textLabel)
     }
 
     private func sectionLabel(_ text: String) -> some View {

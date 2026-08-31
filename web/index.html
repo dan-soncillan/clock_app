@@ -255,6 +255,13 @@
     color: var(--text-axis);
   }
 
+  /* 曜日と日付は1行に。文字の大きさと色の差で読み分ける。 */
+  .day-line {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+
   .weekday {
     font-size: 20px;
     font-weight: 600;
@@ -279,6 +286,7 @@
 
   .counts {
     display: flex;
+    align-items: baseline;
     gap: 26px;
   }
 
@@ -300,6 +308,14 @@
     font-weight: 500;
     letter-spacing: 0.14em;
     color: var(--text-tertiary);
+  }
+
+  /* バーが示す残りの割合を数値でも添える。 */
+  .count-percent {
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--text-label);
   }
 
   /* --- フッター --- */
@@ -420,9 +436,9 @@
       <div class="rule"></div>
 
       <section class="block">
-        <div style="display: flex; flex-direction: column; gap: 5px;">
-          <div class="weekday" id="weekday">MONDAY</div>
-          <div class="date" id="date">August 31, 2026</div>
+        <div class="day-line">
+          <span class="weekday" id="weekday">MONDAY</span>
+          <span class="date" id="date">August 31, 2026</span>
         </div>
 
         <div class="week-day-no" id="weekDayNo">WEEK 1 · DAY 1 OF 365</div>
@@ -434,6 +450,7 @@
         <div class="counts">
           <div class="count"><b id="weeksLeft">0</b><span>WEEKS</span></div>
           <div class="count"><b id="daysLeft">0</b><span>DAYS</span></div>
+          <span class="count-percent" id="yearPercent">0%</span>
         </div>
 
         <div class="bar"><span id="yearBar"></span></div>
@@ -450,6 +467,7 @@
         <div class="counts">
           <div class="count"><b id="lifeYears">0</b><span>YEARS</span></div>
           <div class="count"><b id="lifeDays">0</b><span>DAYS</span></div>
+          <span class="count-percent" id="lifePercent">0%</span>
         </div>
 
         <div class="bar"><span id="lifeBar"></span></div>
@@ -682,6 +700,7 @@
     write("weeksLeft", String(Math.floor(daysLeft / 7)));
     write("daysLeft", String(daysLeft));
     setBar("yearBar", daysLeft / daysInYear);
+    write("yearPercent", percentText(daysLeft / daysInYear));
 
     renderLife(now);
     write("zone", zoneText());
@@ -728,6 +747,7 @@
     write("lifeYears", String(Math.max(0, TARGET_AGE - age)));
     write("lifeDays", Math.floor(remaining / 86400000).toLocaleString("en-US"));
     setBar("lifeBar", remaining / span);
+    write("lifePercent", percentText(remaining / span));
     setAxis("lifeAxis", TARGET_AGE);
   }
 
@@ -737,6 +757,10 @@
     var element = $("period");
     element.textContent = value;
     element.hidden = value === "";
+  }
+
+  function percentText(fraction) {
+    return Math.round(Math.max(0, Math.min(1, fraction)) * 100) + "%";
   }
 
   function setBar(id, fraction) {

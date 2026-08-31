@@ -50,8 +50,19 @@ enum FontRegistrar {
             withExtension: "ttf",
             subdirectory: "Fonts"
         ) else {
+            warn("同梱フォントが見つかりません。システムフォントで表示します。")
             return
         }
-        CTFontManagerRegisterFontsForURL(url as CFURL, .process, nil)
+
+        var error: Unmanaged<CFError>?
+        if !CTFontManagerRegisterFontsForURL(url as CFURL, .process, &error) {
+            let reason = error?.takeRetainedValue().localizedDescription ?? "原因不明"
+            warn("同梱フォントを登録できません（\(reason)）。システムフォントで表示します。")
+        }
+    }
+
+    /// 起動時に気づけるよう標準エラーに出す。フォントの読み込み確認に使う。
+    private static func warn(_ message: String) {
+        FileHandle.standardError.write(Data("[ClockApp] \(message)\n".utf8))
     }
 }

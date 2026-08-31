@@ -11,7 +11,6 @@ struct RootView: View {
 
     /// 表示に使うタイムゾーン。ワールドクロックに広げるならここを差し替える。
     var timeZone: TimeZone = .current
-    var syncStatus: TimeSyncStatus = UnverifiedTimeSyncStatusProvider().status
 
     var body: some View {
         GeometryReader { proxy in
@@ -28,6 +27,7 @@ struct RootView: View {
             .frame(width: proxy.size.width, height: proxy.size.height)
         }
         .background(Theme.windowBackground)
+        .background(WindowConfigurator())
         .preferredColorScheme(.dark)
     }
 
@@ -65,7 +65,7 @@ struct RootView: View {
             .padding(EdgeInsets(top: 8, leading: 10, bottom: 8, trailing: 22))
             .frame(maxHeight: .infinity)
 
-            FooterView(syncStatus: syncStatus)
+            FooterView()
         }
         .background(Theme.windowBackground)
     }

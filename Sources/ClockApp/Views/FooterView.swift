@@ -4,8 +4,7 @@ import SwiftUI
 /// 高さ 46px のフッター。左にフォントウェイト切替、右に表示形式と同期状態。
 struct FooterView: View {
     @Environment(ClockSettings.self) private var settings
-
-    var syncStatus: TimeSyncStatus
+    @Environment(TimeSyncMonitor.self) private var syncMonitor
 
     var body: some View {
         HStack(spacing: 0) {
@@ -23,8 +22,7 @@ struct FooterView: View {
             HStack(spacing: 16) {
                 Text(formatLabel)
                     .foregroundStyle(Theme.textFooter)
-                Text(syncStatus.label)
-                    .foregroundStyle(syncStatus == .synchronized ? settings.accent.color : Theme.textFooter)
+                syncIndicator
             }
             .font(AppFont.archivo(size: 11, weight: 500))
             .tracking(em: 0.12, size: 11)
@@ -35,6 +33,17 @@ struct FooterView: View {
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.borderChrome).frame(height: 1)
         }
+    }
+
+    /// 時刻同期の状態。クリックで再確認でき、実測のずれはツールチップに出す。
+    private var syncIndicator: some View {
+        let status = syncMonitor.status
+        return Text(status.label)
+            .foregroundStyle(status.isSynchronized ? settings.accent.color : Theme.textFooter)
+            .contentShape(Rectangle())
+            .onTapGesture { Task { await syncMonitor.refresh() } }
+            .help(status.detailText)
+            .accessibilityLabel(Text(status.detailText))
     }
 
     private var formatLabel: String {

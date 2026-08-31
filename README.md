@@ -42,10 +42,13 @@ Sources/
     ClockHands.swift        日時 → 針の角度
     ClockFormatter.swift    日時 → HH:MM / SS / 曜日 / 日付 / タイムゾーン行
     CalendarProgress.swift  今日の残り・今年の残りの派生値
-    TimeSyncStatus.swift    フッター右端の同期表示（下記「未実装」を参照）
+    TimeSyncStatus.swift    フッター右端の同期表示の状態
+    NTPPacket.swift         SNTP パケットの組み立て・解析とずれの計算
+    SNTPClient.swift        時刻サーバーへの問い合わせ
   ClockApp/               SwiftUI アプリ本体
     ClockAppMain.swift      App エントリポイントと Scene 定義
     ClockSettings.swift     ユーザー設定（UserDefaults 永続化）
+    TimeSyncMonitor.swift   時刻同期の定期確認
     DesignSystem/
       Theme.swift           色・寸法のデザイントークン。見た目の調整はまずここ
       AppFont.swift         Archivo の可変ウェイト指定とフォント登録
@@ -57,10 +60,12 @@ Sources/
       DigitalPanelView.swift
       RemainingBar.swift
       FooterView.swift
+      WindowConfigurator.swift
       SettingsView.swift
     Fonts/                  Archivo（可変フォント）と OFL.txt
 Tests/ClockCoreTests/     ClockCore のユニットテスト
 Resources/Info.plist      .app バンドル用の Info.plist
+design/                   デザインハンドオフ一式（実装の基準）
 ```
 
 ### 設計メモ
@@ -80,19 +85,73 @@ Resources/Info.plist      .app バンドル用の Info.plist
 ### デザインからの意図的な差分
 
 - **信号機ボタン**はハンドオフでは図形として描かれているが、実装では macOS 本体が描く
-  ものを使う（`.windowStyle(.hiddenTitleBar)`）。ウィンドウの角丸・影も OS 側のものになる。
-  タイトルバーの背景・境界・中央の `CLOCK` は指定どおりに描いている。
+  ものを使う（`.windowStyle(.hiddenTitleBar)`）。アプリ側では一切描かないので二重にならない。
+  ウィンドウの角丸・影も OS 側のものになる。タイトルバーの背景・境界・中央の `CLOCK` は
+  指定どおりに描いている。ボタンの縦位置は macOS の標準位置（上端から約 14pt）で、
+  44px バーの中央にはならない。
 - **12 時間表記**の時刻は `01`〜`12` と 2 桁で出す。等幅数字の桁数が変わると
   隣の秒の位置が動いてしまうため。
 
+### 時刻同期の表示について
+
+フッター右端の `NTP OK` は、**この Mac の時計が実際の時刻と合っているか**を示す。
+起動時と 15 分ごとに `time.apple.com` へ SNTP（UDP 123）で問い合わせ、
+往復の遅延を差し引いたずれを測る。
+
+- ずれが 2 秒以内 → `NTP OK`（アクセント色）
+- ずれが大きい / 応答なし / 未確認 → `NTP —`（副色）
+
+表示にカーソルを合わせると実測のずれがミリ秒で出る。クリックすると即座に再確認する。
+時計を合わせに行くわけではない（それは macOS の仕事）。あくまで確認だけを行う。
+
+アプリをサンドボックス化する場合は、entitlements に
+`com.apple.security.network.client` が必要になる。
+
 ### 未実装
 
-- **フッター右端の同期表示**は、実際の時刻同期を確認していないため既定で `NTP —`
-  （副色）を表示する。デザインの既定状態である `NTP OK` にするには、
-  `ClockCore/TimeSyncStatus.swift` の `TimeSyncStatusProviding` に
-  実際の確認（SNTP 問い合わせなど）を実装して差し替える。
 - アプリアイコン。`Resources/` に `.icns` を置き、`Info.plist` に
   `CFBundleIconFile` を追加する。
+
+## 検証のしかた
+
+手元の Mac で以下を順に確認する。
+
+### 1. ロジック
+
+```sh
+make test
+```
+
+針の角度、通日・残り時間の派生値、表示文字列、SNTP のパケット組み立てとずれの計算を
+UI なしで検証する。デザインのスクリーンショットと同じ 2026-08-31 11:25 JST を
+テストケースに入れてあるので、`12H 35M` / `WEEK 35 · DAY 243 OF 365` / `17 WEEKS` /
+`122 DAYS` が一致することを確認できる。
+
+### 2. 画面
+
+```sh
+make run
+```
+
+- ウィンドウが 980 × 620 で開き、`design/design_handoff_mac_clock/screenshots/main-window.png` と並べて見比べる
+- **フォント**: 起動時に標準エラーへ `[ClockApp] 同梱フォントが…` と出ていなければ
+  Archivo が読めている。フッターのウェイトを 400 と 800 で切り替えて、
+  文字盤の数字と時刻の太さが変わることを確認する
+- **秒針**: 既定はスムーズ運針。⌘, で「秒針を滑らかに動かす」を切ると 1 秒刻みになり、
+  フッターの表示も `SWEEP` → `TICK` に変わる
+- **リサイズ**: ウィンドウの端をドラッグして、配置が組み替わらずに全体が
+  同じ倍率で拡大縮小することを確認する（0.7 倍で止まる）
+- **ウィンドウ**: 信号機ボタンが 1 組だけ出ていること（アプリ側では描いていない）。
+  背景をドラッグしてウィンドウを動かせること
+
+### 3. 時刻同期
+
+- フッター右端の表示にカーソルを合わせると、実測のずれがミリ秒で出る
+- クリックすると再確認する
+- Terminal で `sntp -d time.apple.com` を実行し、そこに出るオフセットと
+  近い値になっていれば正しく測れている
+- ネットワークを切ると、次の確認で `NTP —` に変わる（ツールチップに理由が出る）
+- システム設定で時刻の自動設定を切って時計をずらすと `NTP —`（ずれの値つき）になる
 
 ## これから足せるもの
 
@@ -100,6 +159,16 @@ Resources/Info.plist      .app バンドル用の Info.plist
   タイムゾーンを切り替える／複数並べる形に広げられる
 - ストップウォッチ / タイマー: `ClockCore` に計測ロジックを追加する
 - メニューバー常駐: `MenuBarExtra` シーンを `ClockAppMain` に追加する
+
+## デザインの基準
+
+`design/design_handoff_mac_clock/` にハンドオフ一式を置いてある。
+色・寸法・余白はすべてここの確定値に従う。
+
+- `README.md` — 仕様（画面構成、インタラクション、デザイントークン）
+- `screenshots/main-window.png` — 実装対象の実寸 2 倍キャプチャ
+- `Clock Mac App.dc.html` — デザイン本体。`support.js` と同じ場所に置いて
+  ブラウザで開くと実時刻で動く（`5a` が実装対象、`5f` は書体比較用の検討パーツ）
 
 ## サードパーティ
 

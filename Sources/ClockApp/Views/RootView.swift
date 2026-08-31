@@ -12,6 +12,10 @@ struct RootView: View {
     /// 表示に使うタイムゾーン。ワールドクロックに広げるならここを差し替える。
     var timeZone: TimeZone = .current
 
+    /// 一番下のバーの基準。書き換えれば別の生年月日・年齢に差し替えられる。
+    private static let birthday = DateComponents(year: 1993, month: 3, day: 14)
+    private static let targetAge = 80
+
     var body: some View {
         GeometryReader { proxy in
             timeline(scale: scale(for: proxy.size), windowSize: proxy.size)
@@ -72,6 +76,12 @@ struct RootView: View {
                     date: date,
                     formatter: ClockFormatter(timeZone: timeZone, uses24HourClock: settings.use24h),
                     progress: CalendarProgress(date: date, timeZone: timeZone),
+                    life: LifeProgress(
+                        date: date,
+                        birthday: Self.birthday,
+                        targetAge: Self.targetAge,
+                        timeZone: timeZone
+                    ),
                     showSeconds: settings.showSeconds,
                     weight: settings.weight,
                     accent: settings.accent.color

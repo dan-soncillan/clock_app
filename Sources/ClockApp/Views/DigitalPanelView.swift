@@ -8,6 +8,7 @@ struct DigitalPanelView: View {
     var date: Date
     var formatter: ClockFormatter
     var progress: CalendarProgress
+    var life: LifeProgress
     var showSeconds: Bool
     var weight: Int
     var accent: Color
@@ -19,6 +20,10 @@ struct DigitalPanelView: View {
                 .fill(Theme.borderStrong)
                 .frame(height: 1)
             dateBlock
+            Rectangle()
+                .fill(Theme.borderStrong)
+                .frame(height: 1)
+            lifeBlock
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -109,9 +114,26 @@ struct DigitalPanelView: View {
         }
     }
 
-    private func remainingValue(_ value: Int, unit: String) -> some View {
+    // MARK: - ブロック3「生涯の残り」
+
+    private var lifeBlock: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sectionLabel("REMAINING TO AGE \(life.targetAge)")
+
+            HStack(spacing: 26) {
+                remainingValue(life.yearsRemaining, unit: "YEARS")
+                remainingValue(life.daysRemaining, unit: "DAYS", grouped: true)
+            }
+
+            RemainingBar(fraction: life.remainingFraction, accent: accent)
+            AxisLabels(labels: life.axisMilestones.map(String.init))
+        }
+    }
+
+    private func remainingValue(_ value: Int, unit: String, grouped: Bool = false) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: 7) {
-            Text("\(value)")
+            // 桁数の多い日数だけ 3 桁区切りを入れる。
+            Text(grouped ? value.formatted(.number.grouping(.automatic)) : "\(value)")
                 .font(AppFont.archivo(size: 40, weight: 600))
                 .monospacedDigit()
                 .foregroundStyle(Theme.textPrimary)

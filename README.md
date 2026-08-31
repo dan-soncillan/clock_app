@@ -10,7 +10,11 @@ SwiftUI + Swift Package Manager 製。デザインハンドオフ「Clock — �
 ## できること
 
 - アナログ文字盤（512px）とデジタル情報カラムを 1 画面に同時表示
-- 「今日の残り」「今年の残り」を数値と残量バーで表示（バーは右端から減っていく向き）
+- 「今日の残り」「今年の残り」「目標年齢までの残り」を数値と残量バーで表示
+  （バーはいずれも右端から減っていく向き）
+
+  一番下のバーの基準になる生年月日と目標年齢は、ネイティブ版は
+  `Views/RootView.swift`、Web 版は `web/index.html` の先頭にある定数で変えられる。
 - フッターでフォントウェイトを 400 / 500 / 600 / 700 / 800 に即時切替。選択は永続化
 - 表示設定（⌘,）
   - 24 時間表記 / 12 時間表記
@@ -80,6 +84,7 @@ Sources/
     ClockHands.swift        日時 → 針の角度
     ClockFormatter.swift    日時 → HH:MM / SS / 曜日 / 日付 / タイムゾーン行
     CalendarProgress.swift  今日の残り・今年の残りの派生値
+    LifeProgress.swift      目標年齢までの残りの派生値
     TimeSyncStatus.swift    フッター右端の同期表示の状態
     NTPPacket.swift         SNTP パケットの組み立て・解析とずれの計算
     SNTPClient.swift        時刻サーバーへの問い合わせ

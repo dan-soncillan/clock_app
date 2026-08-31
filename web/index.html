@@ -386,6 +386,114 @@
   /* 秒を消したときは針もデジタル秒も出さない。 */
   .hand[hidden] { display: none; }
 
+  /* --- 生年月日の設定（AGE 80 の行） --- */
+
+  /* 行全体をボタンにして、押せることがホバーで伝わるようにする。 */
+  .life-edit {
+    width: 100%;
+    padding: 0;
+    text-align: left;
+  }
+
+  .life-edit .section-label {
+    border-bottom: 1px dotted var(--text-axis);
+    padding-bottom: 2px;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .life-edit:hover .section-label {
+    color: var(--text-primary);
+    border-bottom-color: var(--accent);
+  }
+
+  .life-edit:hover .label-value { color: var(--accent); }
+
+  .modal-scrim {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(8, 9, 10, 0.6);
+  }
+
+  .modal-scrim[hidden] { display: none; }
+
+  .modal {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    width: 340px;
+    margin: 0;
+    padding: 24px;
+    border-radius: 12px;
+    background: var(--chrome);
+    border: 1px solid var(--border-strong);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+  }
+
+  .modal-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.7;
+    letter-spacing: 0;
+    color: var(--text-secondary);
+  }
+
+  .modal-input {
+    font: inherit;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid var(--border-strong);
+    background: var(--window);
+    color: var(--text-primary);
+  }
+
+  .modal-input[data-invalid="true"] { border-color: var(--accent); }
+
+  .modal-error {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0;
+    color: var(--accent);
+  }
+
+  .modal-error[hidden] { display: none; }
+
+  .modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .modal-actions .spacer { flex: 1; }
+
+  .modal-actions button {
+    padding: 8px 14px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    color: var(--text-secondary);
+    background: var(--segment-track);
+  }
+
+  .modal-actions button:hover {
+    background: var(--segment-hover);
+    color: var(--text-primary);
+  }
+
+  .modal-actions .primary {
+    background: var(--text-primary);
+    color: var(--window);
+  }
+
+  .modal-actions .primary:hover { background: var(--text-primary); }
+
   /* --- フッター --- */
 
   .footer {
@@ -571,13 +679,14 @@
         </div>
 
         <div class="group">
-          <div class="label-row">
+          <button type="button" class="label-row life-edit" id="lifeEdit"
+                  title="クリックで生年月日を設定します（この端末にだけ保存されます）">
             <span class="section-label" id="lifeLabel">REMAINING TO AGE 80</span>
             <span class="label-group">
               <span class="label-value" id="remainLife">0Y 0D</span>
               <span class="label-value" id="lifePercent">0%</span>
             </span>
-          </div>
+          </button>
           <div class="bar"><span id="lifeBar"></span></div>
           <div class="axis" id="lifeAxis"></div>
         </div>
@@ -598,9 +707,27 @@
       <button type="button" id="hourFormat" title="24時間表記と12時間表記を切り替えます">24H</button>
       <button type="button" id="seconds" title="秒針とデジタル秒の表示を切り替えます">SEC</button>
       <button type="button" id="sweep" title="秒針の運針を切り替えます">SWEEP</button>
+      <button type="button" id="fullscreen" title="フルスクリーン表示を切り替えます">FULL</button>
       <button type="button" id="sync" data-ok="false" title="時刻のずれを確認します">SYNC —</button>
     </div>
   </footer>
+
+  <div class="modal-scrim" id="birthModal" hidden>
+    <form class="modal" id="birthForm">
+      <span class="section-label">BIRTH DATE</span>
+      <p class="modal-note">生年月日を入力すると REMAINING TO AGE 80 を計算します。入力した日付はこの端末（ブラウザ）にだけ保存され、どこにも送信されません。</p>
+      <input class="modal-input" id="birthInput" placeholder="YYYY-MM-DD"
+             inputmode="numeric" autocomplete="off" spellcheck="false"
+             aria-label="生年月日（YYYY-MM-DD）">
+      <p class="modal-error" id="birthError" hidden>YYYY-MM-DD の形式で入力してください（例: 1990-01-23）。</p>
+      <div class="modal-actions">
+        <button type="button" id="birthClear">CLEAR</button>
+        <span class="spacer"></span>
+        <button type="button" id="birthCancel">CANCEL</button>
+        <button type="submit" class="primary">SAVE</button>
+      </div>
+    </form>
+  </div>
 </div>
 
 <script>
@@ -1013,21 +1140,107 @@
 
   syncButton.addEventListener("click", checkSync);
 
-  /* 生年月日の設定。ラベルをクリックして YYYY-MM-DD で入力する。 */
-  $("lifeLabel").title = "クリックで生年月日を設定します（この端末にだけ保存されます）";
-  $("lifeLabel").style.cursor = "pointer";
-  $("lifeLabel").addEventListener("click", function () {
-    var input = window.prompt(
-      "生年月日を YYYY-MM-DD で入力してください（この端末にだけ保存されます）",
-      settings.birth || "1990-01-01"
-    );
-    if (input === null) return;
-    if (parseBirth(input)) {
-      settings.birth = input.trim();
-      persist();
-      render(new Date(), true);
+  /* ---- 生年月日の設定 ----
+     window.prompt は埋め込み（サンドボックス化された iframe）では黙って
+     無効化されるため使わない。自前のダイアログなら環境を選ばず動く。 */
+
+  var birthModal = $("birthModal");
+  var birthInput = $("birthInput");
+  var birthError = $("birthError");
+
+  function openBirthModal() {
+    birthInput.value = settings.birth;
+    hideBirthError();
+    birthModal.hidden = false;
+    birthInput.focus();
+  }
+
+  function closeBirthModal() {
+    birthModal.hidden = true;
+  }
+
+  function hideBirthError() {
+    birthError.hidden = true;
+    birthInput.removeAttribute("data-invalid");
+  }
+
+  $("lifeEdit").addEventListener("click", openBirthModal);
+  $("birthCancel").addEventListener("click", closeBirthModal);
+  birthInput.addEventListener("input", hideBirthError);
+
+  $("birthClear").addEventListener("click", function () {
+    settings.birth = "";
+    persist();
+    render(new Date(), true);
+    closeBirthModal();
+  });
+
+  /* パネルの外側（暗幕）のクリックとエスケープはキャンセル扱い。 */
+  birthModal.addEventListener("click", function (event) {
+    if (event.target === birthModal) closeBirthModal();
+  });
+
+  document.addEventListener("keydown", function (event) {
+    if (!birthModal.hidden && event.key === "Escape") closeBirthModal();
+  });
+
+  $("birthForm").addEventListener("submit", function (event) {
+    event.preventDefault();
+    var value = birthInput.value.trim();
+    if (!parseBirth(value)) {
+      birthError.hidden = false;
+      birthInput.dataset.invalid = "true";
+      birthInput.focus();
+      return;
+    }
+    settings.birth = value;
+    persist();
+    render(new Date(), true);
+    closeBirthModal();
+  });
+
+  /* ---- フルスクリーン ----
+     iPad Safari は webkit 接頭辞付きの API しか持たないので両方を見る。 */
+
+  var fullscreenButton = $("fullscreen");
+  var rootElement = document.documentElement;
+
+  function fullscreenElement() {
+    return document.fullscreenElement || document.webkitFullscreenElement || null;
+  }
+
+  if (!rootElement.requestFullscreen && !rootElement.webkitRequestFullscreen) {
+    /* iPhone Safari など API 自体が無い環境。PWA としてホーム画面に
+       追加すれば全画面で起動できるので、その案内だけ残す。 */
+    fullscreenButton.disabled = true;
+    fullscreenButton.title = "このブラウザはフルスクリーン API に対応していません。ホーム画面に追加（PWA）すると全画面で起動できます。";
+  }
+
+  fullscreenButton.addEventListener("click", function () {
+    try {
+      if (fullscreenElement()) {
+        (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+      } else {
+        var request = (rootElement.requestFullscreen || rootElement.webkitRequestFullscreen).call(rootElement);
+        /* 埋め込み側が許可していない iframe では失敗する。その場合は
+           直接開くための案内をツールチップに出す。 */
+        if (request && request.catch) {
+          request.catch(function () {
+            fullscreenButton.title = "この埋め込みではフルスクリーンにできません。ブラウザで直接開くか、公開ページ（GitHub Pages）を使ってください。";
+          });
+        }
+      }
+    } catch (error) {
+      fullscreenButton.title = "フルスクリーンに切り替えられませんでした（" + error.message + "）。";
     }
   });
+
+  function applyFullscreenLabel() {
+    fullscreenButton.textContent = fullscreenElement() ? "EXIT FULL" : "FULL";
+  }
+
+  document.addEventListener("fullscreenchange", applyFullscreenLabel);
+  document.addEventListener("webkitfullscreenchange", applyFullscreenLabel);
 
   /* ---- 拡大縮小 ---- */
 

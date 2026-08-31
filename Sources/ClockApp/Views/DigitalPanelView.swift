@@ -148,14 +148,14 @@ struct DigitalPanelView: View {
         }
     }
 
-    /// バーが示す残りの割合を数値でも添える。
+    /// バーが示す残りの割合。隣の日数と同じ大きさで並べる。
     private func percentLabel(_ fraction: Double) -> some View {
         let percent = Int((min(max(fraction, 0), 1) * 100).rounded())
         return Text("\(percent)%")
-            .font(AppFont.archivo(size: 12, weight: 500))
-            .tracking(em: 0.14, size: 12)
+            .font(AppFont.archivo(size: 40, weight: 600))
             .monospacedDigit()
-            .foregroundStyle(Theme.textLabel)
+            .foregroundStyle(Theme.textPrimary)
+            .lineHeight(0.9, size: 40)
     }
 
     private func sectionLabel(_ text: String) -> some View {

@@ -23,7 +23,29 @@ SwiftUI + Swift Package Manager 製。デザインハンドオフ「Clock — �
 - macOS 14 以降
 - Swift 5.9 以降（Xcode 15 以降に同梱）
 
-## 入手して起動する
+## Web 版
+
+`web/index.html` が同じデザインの Web 実装。ブラウザで開くだけで動くので、
+署名も Gatekeeper も関係ない。
+
+- **Dock に入れて使う**: Safari で開いて **ファイル → Dock に追加**。
+  Chrome なら **︙ → キャスト、保存、共有 → ショートカットを作成**
+- **公開する**: リポジトリの **Settings → Pages** で Source を
+  **GitHub Actions** にすると、`main` への push で自動的に公開される
+  （`.github/workflows/pages.yml`）
+- **手元で見る**: `web/index.html` をブラウザにドラッグしても動く
+
+### ネイティブ版との差分
+
+- **信号機ボタン**はブラウザに窓枠が無いので置いていない。タイトルバーの
+  帯と中央の `CLOCK` は残してある
+- **時刻同期**は NTP（UDP）をブラウザから使えないため、HTTP の `Date`
+  ヘッダーで代用している。精度が約 1 秒と粗く、NTP ではないので
+  表示も `NTP OK` ではなく `SYNC OK` にしてある
+- **設定**はフッターの `24H` / `SWEEP` をクリックして切り替える。
+  選択はこの端末のブラウザにだけ保存される
+
+## ネイティブ版を入手して起動する
 
 ### ビルド済みのアプリをダウンロードする（ターミナル不要）
 
@@ -82,6 +104,7 @@ Sources/
 Tests/ClockCoreTests/     ClockCore のユニットテスト
 Resources/Info.plist      .app バンドル用の Info.plist
 design/                   デザインハンドオフ一式（実装の基準）
+web/index.html            同じデザインの Web 実装
 .github/workflows/        macOS ランナーでのテストと .app のビルド
 ```
 

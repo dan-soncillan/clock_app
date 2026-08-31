@@ -280,41 +280,53 @@
     gap: 16px;
   }
 
+  /* 時刻ブロックと同じ高さに広げ、上端と下端をそろえる。 */
   .date-info {
     display: flex;
     flex-direction: column;
     align-items: flex-end;
-    gap: 4px;
+    justify-content: space-between;
+    align-self: stretch;
     min-width: 0;
     white-space: nowrap;
     text-align: right;
   }
 
   .weekday {
-    font-size: 20px;
+    font-size: 28px;
     font-weight: 600;
     letter-spacing: 0.02em;
+    line-height: 1;
     color: var(--text-primary);
   }
 
   .date {
-    font-size: 15px;
+    font-size: 20px;
     font-weight: 400;
+    line-height: 1;
     color: var(--text-secondary);
   }
 
   .week-day-no {
-    font-size: 11px;
+    font-size: 14px;
     font-weight: 500;
     letter-spacing: 0.12em;
+    line-height: 1;
     color: var(--text-label);
   }
 
-  /* 今日の残りだけを大きく出す。いちばん動きが速く、いちばん見る値。 */
+  /* 今日の残りだけを大きく出す。いちばん動きが速く、いちばん見る値。
+     ラベルと数字は同じ行に置き、上端をそろえる。 */
+  .big-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
   .big-row {
     display: flex;
     align-items: baseline;
-    justify-content: flex-end;
     gap: 26px;
   }
 
@@ -476,23 +488,16 @@
       <div class="rule"></div>
 
       <section class="block">
-        <div class="label-row">
+        <div class="big-line">
           <span class="section-label">REMAINING TODAY</span>
-        </div>
-        <div class="big-row">
-          <b id="remainToday">00:00</b>
-          <b id="todayPercent">0%</b>
+          <div class="big-row">
+            <b id="remainToday">00:00</b>
+            <b id="todayPercent">0%</b>
+          </div>
         </div>
         <div class="bar"><span id="dayBar"></span></div>
         <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
 
-        <div class="label-row">
-          <span class="section-label">REMAINING IN WEEK</span>
-          <span class="label-group">
-            <span class="label-value" id="remainWeek">0D 00:00</span>
-            <span class="label-value" id="weekPercent">0%</span>
-          </span>
-        </div>
         <div class="label-row">
           <span class="section-label">REMAINING IN MONTH</span>
           <span class="label-group">
@@ -792,14 +797,6 @@
     write("remainToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
     write("todayPercent", percentText(remainingMinutes / 1440));
     setBar("dayBar", remainingMinutes / 1440);
-
-    /* 今週の残り。週は月曜 0:00 に始まり、次の月曜 0:00 で終わる。 */
-    var daysToMonday = (8 - now.getDay()) % 7 || 7;
-    var weekMinutes = daysToMonday * 1440 - (hours * 60 + minutes);
-    var weekDays = Math.floor(weekMinutes / 1440);
-    var weekRest = weekMinutes % 1440;
-    write("remainWeek", weekDays + "D " + pad(Math.floor(weekRest / 60)) + ":" + pad(weekRest % 60));
-    write("weekPercent", percentText(weekMinutes / 10080));
 
     /* 今月の残り。 */
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();

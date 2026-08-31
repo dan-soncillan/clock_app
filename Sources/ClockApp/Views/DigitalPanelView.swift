@@ -78,39 +78,44 @@ struct DigitalPanelView: View {
         }
     }
 
-    /// 時計の右横に置く日付の塊。
+    /// 時計の右横に置く日付の塊。時刻ブロックと同じ高さに広げて上下をそろえる。
     private var dateInfo: some View {
-        VStack(alignment: .trailing, spacing: 4) {
+        VStack(alignment: .trailing, spacing: 0) {
             Text(formatter.weekdayText(for: date))
-                .font(AppFont.archivo(size: 20, weight: 600))
-                .tracking(em: 0.02, size: 20)
+                .font(AppFont.archivo(size: 28, weight: 600))
+                .tracking(em: 0.02, size: 28)
                 .foregroundStyle(Theme.textPrimary)
+                .lineHeight(1, size: 28)
+            Spacer(minLength: 0)
             Text(formatter.dateText(for: date))
-                .font(AppFont.archivo(size: 15, weight: 400))
+                .font(AppFont.archivo(size: 20, weight: 400))
                 .foregroundStyle(Theme.textSecondary)
+                .lineHeight(1, size: 20)
+            Spacer(minLength: 0)
             Text("WEEK \(progress.weekNumber)")
-                .font(AppFont.archivo(size: 11, weight: 500))
-                .tracking(em: 0.12, size: 11)
+                .font(AppFont.archivo(size: 14, weight: 500))
+                .tracking(em: 0.12, size: 14)
                 .foregroundStyle(Theme.textLabel)
+                .lineHeight(1, size: 14)
         }
+        .frame(height: 104 * 0.82)
     }
 
     // MARK: - 残量のセクション
 
     private var remaindersBlock: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // 今日だけ大きな数字で。
-            sectionLabel("REMAINING TODAY")
-            HStack(alignment: .firstTextBaseline, spacing: 26) {
+            // 今日だけ大きな数字で。ラベルと同じ行に置き、上端をそろえる。
+            HStack(alignment: .top, spacing: 16) {
+                sectionLabel("REMAINING TODAY")
                 Spacer(minLength: 0)
-                bigValue(progress.remainingTodayText)
-                bigValue(percentText(progress.dayRemainingFraction))
+                HStack(alignment: .firstTextBaseline, spacing: 26) {
+                    bigValue(progress.remainingTodayText)
+                    bigValue(percentText(progress.dayRemainingFraction))
+                }
             }
             RemainingBar(fraction: progress.dayRemainingFraction, accent: accent)
             AxisLabels(labels: ["24", "18", "12", "06", "0"])
-
-            // 週はバー無しの行だけ。今日と月のバーで大勢は分かる。
-            compactRow("REMAINING IN WEEK", progress.remainingWeekText, progress.weekRemainingFraction)
 
             compactRow("REMAINING IN MONTH", progress.remainingMonthText, progress.monthRemainingFraction)
             RemainingBar(fraction: progress.monthRemainingFraction, accent: accent)

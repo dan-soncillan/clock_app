@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<meta name="design_doc_mode" content="canvas" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="" />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@400;500;700&family=Archivo:wght@400;500;600;700;800&family=Sora:wght@300;400;500;600;700&family=Saira:wght@400;500;600;700&family=Azeret+Mono:wght@400;700&family=IBM+Plex+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  body { margin: 0; background: #0c0d0f; }
+  a { color: #E5372C; text-decoration: none; }
+  a:hover { color: #f0685f; }
+</style>
+</helmet>
+
+<section data-screen-label="Turn 5 — layout fixed + font weights" style="padding: 56px 48px 72px; background: #0c0d0f; font-family: 'IBM Plex Sans JP', 'Helvetica Neue', Helvetica, sans-serif; color: #eef1f3; display: flex; flex-direction: column; gap: 44px;">
+
+  <div style="display: flex; flex-direction: column; gap: 10px; max-width: 800px;">
+    <div style="font-family: 'JetBrains Mono', monospace; font-size: 11px; letter-spacing: 0.24em; color: #7d848a;">TURN 5 — 数字配置の確定 / 書体ウェイト比較</div>
+    <div style="font-size: 24px; font-weight: 500; letter-spacing: -0.01em;">turn3の配置 ＋ 針が数字に触れないクリアランス</div>
+    <div style="font-size: 13px; line-height: 1.7; color: #9aa1a7; text-wrap: pretty;">数字はturn3と同じ内側位置。針を短くして数字リングの内側で止まるようにしました（<a href="#5a">5a</a>）。書体は候補03/05/06をアナログ・デジタル共通で適用し、ウェイト3段階ずつ（<a href="#5f">5f</a>）。</div>
+  </div>
+
+  <div id="5a" style="display: flex; flex-direction: column; gap: 14px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; padding: 4px 9px; border-radius: 5px; background: rgba(229,55,44,0.16); color: #f08b83;">5a</div>
+      <div style="font-size: 14px; font-weight: 500;">メインウィンドウ（暫定書体: Archivo 700）</div>
+    </div>
+
+    <div data-screen-label="Main window" style="width: 980px; height: 620px; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: #141618; border: 1px solid rgba(255,255,255,0.12); box-shadow: 0 60px 110px -30px rgba(0,0,0,0.9); font-family: 'Archivo', sans-serif;">
+      <div style="height: 44px; flex: none; display: flex; align-items: center; padding: 0 14px; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); background: #17191c;">
+        <div style="width: 11px; height: 11px; border-radius: 50%; background: #ff5f57;"></div>
+        <div style="width: 11px; height: 11px; border-radius: 50%; background: #febc2e;"></div>
+        <div style="width: 11px; height: 11px; border-radius: 50%; background: #28c840;"></div>
+        <div style="flex: 1; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.16em; color: #9aa1a7;">CLOCK</div>
+        <div style="width: 66px;"></div>
+      </div>
+
+      <div style="flex: 1; display: flex; align-items: center; gap: 22px; padding: 8px 22px 8px 10px; min-height: 0;">
+        <div style="position: relative; width: 512px; height: 512px; flex: none; border-radius: 50%; background: radial-gradient(75% 75% at 50% 30%, #1c1f22 0%, #131518 100%); border: 1px solid rgba(255,255,255,0.14);">
+          <sc-for list="{{ ticksMain }}" as="t" hint-placeholder-count="60">
+            <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+              <div style="position: absolute; left: 50%; top: 10px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+            </div>
+          </sc-for>
+          <sc-for list="{{ numsBig }}" as="n" hint-placeholder-count="12">
+            <div style="position: absolute; left: 50%; top: 50%; font-size: 42px; font-weight: {{ weight }}; color: #ffffff; font-variant-numeric: tabular-nums; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+          </sc-for>
+          <div style="position: absolute; left: 50%; bottom: 50%; width: 10px; height: 112px; border-radius: 5px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+          <div style="position: absolute; left: 50%; bottom: 50%; width: 6px; height: 158px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+          <sc-if value="{{ showSeconds }}" hint-placeholder-val="{{ true }}">
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 2px; height: 168px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </sc-if>
+        </div>
+
+        <div style="flex: 1; display: flex; flex-direction: column; gap: 18px; min-width: 0;">
+
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.18em; color: #969da3;">TOKYO · JST · UTC+09:00</div>
+            <div style="display: flex; align-items: baseline; gap: 10px;">
+              <div style="font-size: 104px; font-weight: {{ weight }}; line-height: 0.82; letter-spacing: -0.05em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+              <sc-if value="{{ showSeconds }}" hint-placeholder-val="{{ true }}">
+                <div style="font-size: 36px; font-weight: {{ weight }}; line-height: 1; color: {{ accent }}; font-variant-numeric: tabular-nums;">{{ ss }}</div>
+              </sc-if>
+            </div>
+            <div style="display: flex; align-items: baseline; justify-content: space-between;">
+              <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.22em; color: #7d848a;">REMAINING TODAY</div>
+              <div style="font-size: 15px; font-weight: 600; color: #ffffff; font-variant-numeric: tabular-nums;">{{ remainToday }}</div>
+            </div>
+            <div style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); display: flex; justify-content: flex-end; overflow: hidden;">
+              <div style="height: 4px; border-radius: 2px; background: {{ accent }}; width: {{ dayRemainPct }}%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 9.5px; font-weight: 500; letter-spacing: 0.14em; color: #6f767c;">
+              <span>24</span><span>18</span><span>12</span><span>06</span><span>0</span>
+            </div>
+          </div>
+
+          <div style="height: 1px; background: rgba(255,255,255,0.14);"></div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; flex-direction: column; gap: 5px;">
+              <div style="font-size: 20px; font-weight: 600; color: #ffffff; letter-spacing: 0.02em;">{{ weekdayStr }}</div>
+              <div style="font-size: 15px; font-weight: 400; color: #c3c9ce;">{{ dateStr }}</div>
+            </div>
+            <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.12em; color: #7d848a;">WEEK {{ weekNo }} · DAY {{ dayNo }} OF {{ daysInYear }}</div>
+            <div style="display: flex; align-items: baseline; justify-content: space-between; padding-top: 4px;">
+              <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.22em; color: #7d848a;">REMAINING IN {{ yearStr }}</div>
+            </div>
+            <div style="display: flex; gap: 26px;">
+              <div style="display: flex; align-items: baseline; gap: 7px;">
+                <div style="font-size: 40px; font-weight: 600; line-height: 0.9; color: #ffffff; font-variant-numeric: tabular-nums;">{{ weeksLeft }}</div>
+                <div style="font-size: 12px; font-weight: 500; letter-spacing: 0.14em; color: #969da3;">WEEKS</div>
+              </div>
+              <div style="display: flex; align-items: baseline; gap: 7px;">
+                <div style="font-size: 40px; font-weight: 600; line-height: 0.9; color: #ffffff; font-variant-numeric: tabular-nums;">{{ daysLeft }}</div>
+                <div style="font-size: 12px; font-weight: 500; letter-spacing: 0.14em; color: #969da3;">DAYS</div>
+              </div>
+            </div>
+            <div style="height: 4px; border-radius: 2px; background: rgba(255,255,255,0.1); display: flex; justify-content: flex-end; overflow: hidden;">
+              <div style="height: 4px; border-radius: 2px; background: {{ accent }}; width: {{ yearRemainPct }}%;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 9.5px; font-weight: 500; letter-spacing: 0.14em; color: #6f767c;">
+              <span>JAN</span><span>DEC</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height: 46px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; border-top: 1px solid rgba(255,255,255,0.08); background: #17191c; font-size: 11px; font-weight: 500; letter-spacing: 0.12em;">
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <div style="font-size: 10px; font-weight: 600; letter-spacing: 0.2em; color: #7d848a;">FONT WEIGHT</div>
+          <div style="display: flex; gap: 4px; padding: 3px; border-radius: 8px; background: rgba(255,255,255,0.06);">
+            <sc-for list="{{ weightOptions }}" as="w" hint-placeholder-count="5">
+              <div onClick="{{ w.onClick }}" style="padding: 5px 11px; border-radius: 6px; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; cursor: pointer; background: {{ w.bg }}; color: {{ w.color }};" style-hover="background: rgba(255,255,255,0.12)">{{ w.label }}</div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display: flex; gap: 16px; color: #8b9298;">
+          <span>{{ fmtLabel }}</span>
+          <span style="color: {{ accent }};">NTP OK</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5f font × weight -->
+  <div id="5f" style="display: flex; flex-direction: column; gap: 20px;">
+    <div style="display: flex; align-items: baseline; gap: 12px;">
+      <div style="font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 500; padding: 4px 9px; border-radius: 5px; background: rgba(229,55,44,0.16); color: #f08b83;">5f</div>
+      <div style="font-size: 14px; font-weight: 500;">03 Archivo / 05 Sora / 06 Saira × ウェイト3段階</div>
+      <div style="font-size: 12px; color: #7b8288;">文字盤・デジタル・UI すべて同じ書体</div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: repeat(3, 300px); gap: 18px;">
+
+      <div id="5f-03a" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Archivo', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">03a — ARCHIVO 500</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 13px; font-weight: 500; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 40px; font-weight: 500; line-height: 0.85; letter-spacing: -0.03em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-03b" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Archivo', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">03b — ARCHIVO 700</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 13px; font-weight: 700; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 40px; font-weight: 700; line-height: 0.85; letter-spacing: -0.035em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-03c" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Archivo', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">03c — ARCHIVO 800</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 13px; font-weight: 800; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 40px; font-weight: 800; line-height: 0.85; letter-spacing: -0.04em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-05a" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Sora', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">05a — SORA 400</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 12px; font-weight: 400; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 36px; font-weight: 400; line-height: 0.85; letter-spacing: -0.04em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 10.5px; font-weight: 400; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-05b" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Sora', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">05b — SORA 600</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 12px; font-weight: 600; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 36px; font-weight: 600; line-height: 0.85; letter-spacing: -0.045em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 10.5px; font-weight: 500; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-05c" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Sora', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">05c — SORA 700</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 12px; font-weight: 700; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 36px; font-weight: 700; line-height: 0.85; letter-spacing: -0.05em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 10.5px; font-weight: 600; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-06a" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Saira', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">06a — SAIRA 500</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 14px; font-weight: 500; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 42px; font-weight: 500; line-height: 0.85; letter-spacing: -0.01em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 11px; font-weight: 500; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-06b" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Saira', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">06b — SAIRA 600</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 14px; font-weight: 600; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 42px; font-weight: 600; line-height: 0.85; letter-spacing: -0.015em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 11px; font-weight: 600; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="5f-06c" style="padding: 22px; border-radius: 12px; background: #141618; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; gap: 18px; font-family: 'Saira', sans-serif;">
+        <div style="font-family: 'JetBrains Mono', monospace; font-size: 10px; letter-spacing: 0.18em; color: #7d848a;">06c — SAIRA 700</div>
+        <div style="display: flex; align-items: center; gap: 18px;">
+          <div style="position: relative; width: 132px; height: 132px; flex: none; border-radius: 50%; border: 1px solid rgba(255,255,255,0.16);">
+            <sc-for list="{{ ticksMini }}" as="t" hint-placeholder-count="12">
+              <div style="position: absolute; inset: 0; transform: rotate({{ t.deg }}deg);">
+                <div style="position: absolute; left: 50%; top: 5px; transform: translateX(-50%); width: {{ t.w }}px; height: {{ t.h }}px; background: {{ t.bg }};"></div>
+              </div>
+            </sc-for>
+            <sc-for list="{{ numsMini }}" as="n" hint-placeholder-count="4">
+              <div style="position: absolute; left: 50%; top: 50%; font-size: 14px; font-weight: 700; color: #ffffff; transform: translate(-50%, -50%) translate({{ n.x }}px, {{ n.y }}px);">{{ n.label }}</div>
+            </sc-for>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 5px; height: 26px; border-radius: 3px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ hourDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 3px; height: 38px; border-radius: 2px; background: #ffffff; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ minDeg }}deg);"></div>
+            <div style="position: absolute; left: 50%; bottom: 50%; width: 1.5px; height: 42px; background: {{ accent }}; transform-origin: 50% 100%; transform: translateX(-50%) rotate({{ secDeg }}deg);"></div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-size: 42px; font-weight: 700; line-height: 0.85; letter-spacing: -0.02em; color: #ffffff; font-variant-numeric: tabular-nums;">{{ hhmm }}</div>
+            <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.1em; color: #969da3;">{{ weekdayStr }}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;weight&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;default&quot;:&quot;700&quot;,&quot;options&quot;:[&quot;400&quot;,&quot;500&quot;,&quot;600&quot;,&quot;700&quot;,&quot;800&quot;],&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;見た目&quot;},&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#E5372C&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;options&quot;:[&quot;#E5372C&quot;,&quot;#F0522B&quot;,&quot;#3B7DD8&quot;,&quot;#2FA36B&quot;],&quot;section&quot;:&quot;見た目&quot;},&quot;showSeconds&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;時計の挙動&quot;},&quot;smoothSweep&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;時計の挙動&quot;},&quot;use24h&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;時計の挙動&quot;}}">
+class Component extends DCLogic {
+  state = { now: new Date(), weight: null };
+
+  componentDidMount() {
+    this.timer = setInterval(() => this.setState({ now: new Date() }), 50);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+
+  ring(i, count, radius) {
+    const a = (i / count) * Math.PI * 2 - Math.PI / 2;
+    return { x: Math.round(Math.cos(a) * radius), y: Math.round(Math.sin(a) * radius) };
+  }
+
+  renderVals() {
+    const accent = this.props.accent ?? '#E5372C';
+    const showSeconds = this.props.showSeconds ?? true;
+    const smooth = this.props.smoothSweep ?? true;
+    const use24h = this.props.use24h ?? true;
+    const now = this.state.now;
+    const h = now.getHours(), m = now.getMinutes(), s = now.getSeconds(), ms = now.getMilliseconds();
+    const sFrac = smooth ? s + ms / 1000 : s;
+    const pad = (n) => String(n).padStart(2, '0');
+    const h12 = h % 12 === 0 ? 12 : h % 12;
+    const label = (i) => (i === 0 ? '12' : String(i));
+    const weight = this.state.weight ?? Number(this.props.weight ?? 700);
+
+    const ticksMain = Array.from({ length: 60 }, (_, i) => {
+      const major = i % 5 === 0;
+      return { deg: i * 6, w: major ? 3 : 1, h: major ? 16 : 8, bg: major ? '#ffffff' : 'rgba(255,255,255,0.4)' };
+    });
+    const ticksMini = Array.from({ length: 12 }, (_, i) => ({
+      deg: i * 30, w: i % 3 === 0 ? 2 : 1, h: i % 3 === 0 ? 8 : 5,
+      bg: i % 3 === 0 ? '#ffffff' : 'rgba(255,255,255,0.45)',
+    }));
+
+    const numsBig = Array.from({ length: 12 }, (_, i) => {
+      const p = this.ring(i, 12, 194);
+      return { label: label(i), x: p.x, y: p.y };
+    });
+    const numsMini = [0, 3, 6, 9].map((i) => {
+      const p = this.ring(i, 12, 37);
+      return { label: label(i), x: p.x, y: p.y };
+    });
+
+    const year = now.getFullYear();
+    const startOfYear = new Date(year, 0, 1);
+    const daysInYear = Math.round((new Date(year + 1, 0, 1) - startOfYear) / 86400000);
+    const dayNo = Math.floor((now - startOfYear) / 86400000) + 1;
+    const daysLeft = daysInYear - dayNo;
+
+    const minsLeft = 1440 - (h * 60 + m);
+
+    return {
+      accent, showSeconds, weight,
+      dayRemainPct: Math.round((minsLeft / 1440) * 100),
+      yearRemainPct: Math.round((daysLeft / daysInYear) * 100),
+      remainToday: Math.floor(minsLeft / 60) + 'H ' + pad(minsLeft % 60) + 'M',
+      weightOptions: [400, 500, 600, 700, 800].map((w) => ({
+        label: String(w),
+        bg: w === weight ? '#ffffff' : 'transparent',
+        color: w === weight ? '#141618' : '#9aa1a7',
+        onClick: () => this.setState({ weight: w }),
+      })),
+      hourDeg: ((h % 12) + m / 60) * 30,
+      minDeg: (m + s / 60) * 6,
+      secDeg: sFrac * 6,
+      hhmm: use24h ? pad(h) + ':' + pad(m) : pad(h12) + ':' + pad(m),
+      ss: pad(s),
+      fmtLabel: (use24h ? '24H' : '12H') + (smooth ? ' · SWEEP' : ' · TICK'),
+      weekdayStr: new Intl.DateTimeFormat('en-US', { weekday: 'long' }).format(now).toUpperCase(),
+      dateStr: new Intl.DateTimeFormat('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).format(now),
+      yearStr: String(year),
+      daysInYear, dayNo, daysLeft,
+      weeksLeft: Math.floor(daysLeft / 7),
+      weekNo: Math.ceil(dayNo / 7),
+      yearPct: Math.round((dayNo / daysInYear) * 100),
+      ticksMain, ticksMini, numsBig, numsMini,
+    };
+  }
+}
+
+</script>
+</body>
+</html>

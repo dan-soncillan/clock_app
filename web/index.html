@@ -1,0 +1,1077 @@
+<title>Clock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&display=swap">
+<style>
+  /* link が効かない環境でも読めるよう、読み込み経路を二重にしておく。 */
+  @import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&display=swap");
+
+  /* デザインハンドオフ「Clock — アナログ & デジタル」の確定値。
+     常時表示前提のダーク基調に振り切った単一テーマなので、
+     背景も文字色もすべて明示的に塗る。 */
+  :root {
+    --window: #141618;
+    --chrome: #17191c;
+    --dial-inner: #1c1f22;
+    --dial-outer: #131518;
+
+    --border-strong: rgba(255, 255, 255, 0.14);
+    --border-chrome: rgba(255, 255, 255, 0.08);
+
+    --text-primary: #ffffff;
+    --text-secondary: #c3c9ce;
+    --text-tertiary: #969da3;
+    --text-label: #7d848a;
+    --text-axis: #6f767c;
+    --text-footer: #8b9298;
+
+    --tick-minor: rgba(255, 255, 255, 0.4);
+    --bar-track: rgba(255, 255, 255, 0.1);
+    --segment-track: rgba(255, 255, 255, 0.06);
+    --segment-hover: rgba(255, 255, 255, 0.12);
+
+    --accent: #E5372C;
+
+    --font: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+    /* デジタル時刻・秒・文字盤数字の太さ。フッターの切替で書き換える。 */
+    --weight: 700;
+  }
+
+  /* 可変フォントの wght 軸は font-weight だけでは反映されない場合があるので、
+     font-variation-settings でも同じ値を指定する。
+     代替書体に落ちたときに偽の太字で誤魔化されないよう合成も切る。 */
+  .hhmm,
+  .ss,
+  .numeral {
+    font-family: var(--font);
+    font-weight: var(--weight);
+    font-variation-settings: "wght" var(--weight);
+    font-synthesis-weight: none;
+    font-synthesis: none;
+  }
+
+  html, body {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    margin: 0;
+    background: var(--window);
+    color: var(--text-primary);
+    font-family: var(--font);
+    font-variant-numeric: tabular-nums;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 980 × 576 の比率で組んだ画面を、配置は変えずにまとめて拡大縮小する。
+     実際の寸法は表示領域いっぱいになるよう JS が書き換える。 */
+  #stage {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 980px;
+    /* 本体 530px + フッター 46px。 */
+    height: 576px;
+    transform-origin: 50% 50%;
+    display: flex;
+    flex-direction: column;
+    background: var(--window);
+  }
+
+  /* --- 本体 --- */
+
+  .content {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    padding: 8px 0;
+    min-height: 0;
+  }
+
+  /* 縦向き（iPad の縦持ちなど）は文字盤を上、パネルを下に積む。 */
+  #stage.portrait .content {
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  #stage.portrait .panel {
+    width: 100%;
+  }
+
+  /* 縦向きはフッターが横幅に収まらないので、2行に折り返して中央寄せにする。 */
+  #stage.portrait .footer {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 46px;
+    justify-content: center;
+    column-gap: 28px;
+    row-gap: 10px;
+    padding: 10px 0;
+  }
+
+  /* --- 文字盤 --- */
+
+  .dial {
+    position: relative;
+    /* 目盛りの土台は正方形を回転させたものなので、当たり判定が円の外まで
+       張り出してフッターのボタンを覆ってしまう。表示専用なので無効化する。 */
+    pointer-events: none;
+    width: 512px;
+    height: 512px;
+    flex: none;
+    border-radius: 50%;
+    background: radial-gradient(75% 75% at 50% 30%, var(--dial-inner) 0%, var(--dial-outer) 100%);
+    border: 1px solid var(--border-strong);
+  }
+
+  .tick-slot {
+    position: absolute;
+    inset: 0;
+  }
+
+  .tick {
+    position: absolute;
+    left: 50%;
+    top: 10px;
+    transform: translateX(-50%);
+  }
+
+  .tick.major {
+    width: 3px;
+    height: 16px;
+    background: var(--text-primary);
+  }
+
+  .tick.minor {
+    width: 1px;
+    height: 8px;
+    background: var(--tick-minor);
+  }
+
+  .numeral {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    font-size: 42px;
+    color: var(--text-primary);
+  }
+
+  .hand {
+    position: absolute;
+    left: 50%;
+    bottom: 50%;
+    transform-origin: 50% 100%;
+    background: var(--text-primary);
+  }
+
+  .hand.hour { width: 10px; height: 112px; border-radius: 5px; }
+  .hand.minute { width: 6px; height: 158px; border-radius: 3px; }
+  .hand.second { width: 2px; height: 168px; background: var(--accent); }
+  /* 中心のキャップは置かない（デザイン上、意図的に省いている）。 */
+
+  /* --- デジタルカラム --- */
+
+  .panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+    min-width: 0;
+    /* 縦をいっぱいに使う。余った高さは残量セクションが受け取る。 */
+    align-self: stretch;
+  }
+
+  .block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 残量セクションは残りの高さを全部使い、グループ間に余白を均等配分する。 */
+  .remainders {
+    flex: 1;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .group {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .rule {
+    height: 1px;
+    background: var(--border-strong);
+  }
+
+  .zone {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.18em;
+    color: var(--text-tertiary);
+  }
+
+  .time-row {
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  /* AM/PM は秒の上に積む。横に並べると 12 時間表記のとき行が伸びて
+     右の日付情報が入らなくなる。 */
+  .sec-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    gap: 6px;
+    padding-bottom: 2px;
+  }
+
+  .hhmm {
+    font-size: 104px;
+    line-height: 0.82;
+    letter-spacing: -0.05em;
+    color: var(--text-primary);
+  }
+
+  .ss {
+    font-size: 36px;
+    line-height: 1;
+    color: var(--accent);
+  }
+
+  .ss[hidden] { display: none; }
+
+  /* 12時間表記のときだけ出す。これが無いと午前と午後を区別できない。 */
+  .period {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    color: var(--text-tertiary);
+  }
+
+  .period[hidden] { display: none; }
+
+  .label-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+
+  .section-label {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    color: var(--text-label);
+  }
+
+  .label-value {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text-primary);
+  }
+
+  /* 残り時間と残り%を右端にまとめる。 */
+  .label-group {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
+  /* 塗りは「残り」を表すので、トラックの右端から伸ばす。 */
+  .bar {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--bar-track);
+    display: flex;
+    justify-content: flex-end;
+    overflow: hidden;
+  }
+
+  .bar > span {
+    height: 4px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  .axis {
+    display: flex;
+    justify-content: space-between;
+    font-size: 9.5px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    color: var(--text-axis);
+  }
+
+  /* 時刻の右に日付情報を並べる。 */
+  .time-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  /* 時刻ブロックと同じ高さに広げ、上端と下端をそろえる。 */
+  .date-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: space-between;
+    align-self: stretch;
+    min-width: 0;
+    white-space: nowrap;
+    text-align: right;
+  }
+
+  .weekday {
+    font-size: 28px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    color: var(--text-primary);
+  }
+
+  .date {
+    font-size: 20px;
+    font-weight: 400;
+    line-height: 1;
+    color: var(--text-secondary);
+  }
+
+  .week-day-no {
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    line-height: 1;
+    color: var(--text-label);
+  }
+
+  /* 今日の残りだけを大きく出す。いちばん動きが速く、いちばん見る値。
+     ラベルと数字は同じ行に置き、上端をそろえる。 */
+  .big-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    /* ラベルは折り返さない。窮屈なときは数字の行ごと下に落とす。 */
+    flex-wrap: wrap;
+  }
+
+  .big-line .section-label {
+    white-space: nowrap;
+    /* 大きな数字と上端がそろって見えるよう少し下げる。 */
+    padding-top: 6px;
+  }
+
+  .big-row {
+    display: flex;
+    align-items: baseline;
+    gap: 26px;
+    /* 折り返して単独行になっても右寄せを保つ。 */
+    margin-left: auto;
+  }
+
+  .big-row b {
+    font-size: 60px;
+    font-weight: 600;
+    line-height: 0.9;
+    color: var(--text-primary);
+  }
+
+  /* 秒を消したときは針もデジタル秒も出さない。 */
+  .hand[hidden] { display: none; }
+
+  /* --- フッター --- */
+
+  .footer {
+    height: 46px;
+    flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+  }
+
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .weights {
+    display: flex;
+    gap: 4px;
+    padding: 3px;
+    border-radius: 8px;
+    background: var(--segment-track);
+  }
+
+  button {
+    font: inherit;
+    font-family: var(--font);
+    border: 0;
+    background: none;
+    color: inherit;
+    cursor: pointer;
+  }
+
+  .weights button {
+    padding: 5px 11px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    background: transparent;
+    color: var(--text-tertiary);
+  }
+
+  .weights button:hover { background: var(--segment-hover); }
+
+  .weights button[aria-pressed="true"] {
+    background: var(--text-primary);
+    color: var(--window);
+  }
+
+  .weights button[aria-pressed="true"]:hover { background: var(--text-primary); }
+
+  /* アクセント色の切替。選択中の色は白い輪で示す。 */
+  .accents {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .accents button {
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    border-radius: 50%;
+  }
+
+  .accents button:hover { transform: scale(1.2); }
+
+  .accents button[aria-pressed="true"] {
+    outline: 1.5px solid var(--text-primary);
+    outline-offset: 2px;
+  }
+
+  .footer-right {
+    display: flex;
+    gap: 16px;
+    color: var(--text-footer);
+  }
+
+  .footer-right button {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.12em;
+    color: var(--text-footer);
+  }
+
+  .footer-right button:hover { color: var(--text-primary); }
+
+  .footer-right button:disabled {
+    color: var(--text-axis);
+    cursor: default;
+  }
+
+  #sync[data-ok="true"] { color: var(--accent); }
+
+  :focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 3px;
+  }
+
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>
+
+<div id="stage">
+  <div class="content">
+    <div class="dial" id="dial" aria-hidden="true">
+      <div class="hand hour" id="hour"></div>
+      <div class="hand minute" id="minute"></div>
+      <div class="hand second" id="second"></div>
+    </div>
+
+    <div class="panel">
+      <section class="block">
+        <div class="zone" id="zone">&nbsp;</div>
+
+        <div class="time-line">
+          <div class="time-row" role="timer" aria-live="off" id="timeRow">
+            <div class="hhmm" id="hhmm">00:00</div>
+            <div class="sec-stack">
+              <div class="period" id="period" hidden>AM</div>
+              <div class="ss" id="ss">00</div>
+            </div>
+          </div>
+
+          <div class="date-info">
+            <span class="weekday" id="weekday">MON</span>
+            <span class="date" id="date">August 31, 2026</span>
+            <span class="week-day-no" id="weekDayNo">WEEK 1</span>
+          </div>
+        </div>
+        <p class="visually-hidden" id="spokenTime" aria-live="polite"></p>
+      </section>
+
+      <!-- 区切り線はここ 1 本だけ。時計のセクションと残量のセクションを分ける。 -->
+      <div class="rule"></div>
+
+      <section class="block remainders">
+        <div class="group">
+          <div class="big-line">
+            <span class="section-label">REMAINING TODAY</span>
+            <div class="big-row">
+              <b id="remainToday">00:00</b>
+              <b id="todayPercent">0%</b>
+            </div>
+          </div>
+          <div class="bar"><span id="dayBar"></span></div>
+          <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
+        </div>
+
+        <div class="group">
+          <div class="label-row">
+            <span class="section-label">REMAINING IN MONTH</span>
+            <span class="label-group">
+              <span class="label-value" id="remainMonth">0D</span>
+              <span class="label-value" id="monthPercent">0%</span>
+            </span>
+          </div>
+          <div class="bar"><span id="monthBar"></span></div>
+          <div class="axis" id="monthAxis"></div>
+        </div>
+
+        <div class="group">
+          <div class="label-row">
+            <span class="section-label">REMAINING IN YEAR</span>
+            <span class="label-group">
+              <span class="label-value" id="remainYear">0W 0D</span>
+              <span class="label-value" id="yearPercent">0%</span>
+            </span>
+          </div>
+          <div class="bar"><span id="yearBar"></span></div>
+          <div class="axis" id="yearAxis"></div>
+        </div>
+
+        <div class="group">
+          <div class="label-row">
+            <span class="section-label" id="lifeLabel">REMAINING TO AGE 80</span>
+            <span class="label-group">
+              <span class="label-value" id="remainLife">0Y 0D</span>
+              <span class="label-value" id="lifePercent">0%</span>
+            </span>
+          </div>
+          <div class="bar"><span id="lifeBar"></span></div>
+          <div class="axis" id="lifeAxis"></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <footer class="footer">
+    <div class="footer-left">
+      <span class="section-label" id="fontWeightLabel" style="letter-spacing: 0.2em;">FONT WEIGHT</span>
+      <div class="weights" id="weights" role="group" aria-label="フォントウェイト"></div>
+
+      <span class="section-label" style="letter-spacing: 0.2em; margin-left: 12px;">ACCENT</span>
+      <div class="accents" id="accents" role="group" aria-label="アクセント色"></div>
+    </div>
+
+    <div class="footer-right">
+      <button type="button" id="hourFormat" title="24時間表記と12時間表記を切り替えます">24H</button>
+      <button type="button" id="seconds" title="秒針とデジタル秒の表示を切り替えます">SEC</button>
+      <button type="button" id="sweep" title="秒針の運針を切り替えます">SWEEP</button>
+      <button type="button" id="sync" data-ok="false" title="時刻のずれを確認します">SYNC —</button>
+    </div>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var WEIGHTS = [400, 500, 600, 700, 800];
+  var DIAL_RADIUS = 256;
+  var NUMERAL_RADIUS = 194;
+  /* 同期済みと見なすずれの上限（ミリ秒）。 */
+  var TOLERANCE_MS = 2000;
+
+  /* 一番下のバーの目標年齢。生年月日はコードに置かず、
+     ラベルをクリックして入力したものをこの端末にだけ保存する。 */
+  var TARGET_AGE = 80;
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---- 設定（この端末にだけ保存する） ---- */
+
+  var prefersReducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  var settings = {
+    weight: 700,
+    use24h: true,
+    smoothSweep: !prefersReducedMotion,
+    showSeconds: true,
+    accent: "red",
+    birth: ""
+  };
+
+  /* アクセントの選択肢（デザイントークンで確定している4色）。 */
+  var ACCENTS = [
+    { key: "red", color: "#E5372C", label: "レッド" },
+    { key: "orange", color: "#F0522B", label: "オレンジ" },
+    { key: "blue", color: "#3B7DD8", label: "ブルー" },
+    { key: "green", color: "#2FA36B", label: "グリーン" }
+  ];
+
+  try {
+    var saved = JSON.parse(localStorage.getItem("clock-settings") || "{}");
+    Object.keys(settings).forEach(function (key) {
+      if (typeof saved[key] === typeof settings[key]) settings[key] = saved[key];
+    });
+  } catch (error) {
+    /* プライベートウィンドウなど、読めない環境では既定値のまま進む。 */
+  }
+
+  function persist() {
+    try {
+      localStorage.setItem("clock-settings", JSON.stringify(settings));
+    } catch (error) { /* 保存できなくても表示には影響しない。 */ }
+  }
+
+  /* ---- 文字盤の組み立て ---- */
+
+  var dial = $("dial");
+
+  for (var i = 0; i < 60; i++) {
+    var slot = document.createElement("div");
+    slot.className = "tick-slot";
+    slot.style.transform = "rotate(" + i * 6 + "deg)";
+    var tick = document.createElement("div");
+    tick.className = "tick " + (i % 5 === 0 ? "major" : "minor");
+    slot.appendChild(tick);
+    dial.insertBefore(slot, dial.firstChild);
+  }
+
+  var numerals = [];
+  for (var n = 0; n < 12; n++) {
+    var angle = (n / 12) * 2 * Math.PI - Math.PI / 2;
+    var numeral = document.createElement("div");
+    numeral.className = "numeral";
+    numeral.textContent = String(n === 0 ? 12 : n);
+    numeral.style.transform =
+      "translate(-50%, -50%) translate(" +
+      Math.round(Math.cos(angle) * NUMERAL_RADIUS) + "px, " +
+      Math.round(Math.sin(angle) * NUMERAL_RADIUS) + "px)";
+    dial.appendChild(numeral);
+    numerals.push(numeral);
+  }
+
+  /* ---- ウェイト切替 ---- */
+
+  var weightButtons = WEIGHTS.map(function (weight) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.textContent = String(weight);
+    button.setAttribute("aria-pressed", String(settings.weight === weight));
+    button.addEventListener("click", function () {
+      settings.weight = weight;
+      persist();
+      applyWeight();
+    });
+    $("weights").appendChild(button);
+    return { weight: weight, element: button };
+  });
+
+  function applyWeight() {
+    $("stage").style.setProperty("--weight", String(settings.weight));
+    weightButtons.forEach(function (entry) {
+      entry.element.setAttribute("aria-pressed", String(entry.weight === settings.weight));
+    });
+  }
+
+  /* Archivo が実際に使われているかを「FONT WEIGHT」のツールチップで確認できるようにする。
+     代替書体に落ちているとウェイトの差がほとんど出ないため、切り分けの手掛かりになる。 */
+  function reportFontStatus() {
+    var label = $("fontWeightLabel");
+    if (!document.fonts || !document.fonts.ready) return;
+    document.fonts.ready.then(function () {
+      var loaded = document.fonts.check('700 104px "Archivo"');
+      label.title = loaded
+        ? "Archivo（可変フォント）で表示しています。"
+        : "Archivo を読み込めなかったため代替書体で表示しています。太さの差が出ません。";
+    });
+  }
+
+  /* ---- アクセント色 ---- */
+
+  var accentButtons = ACCENTS.map(function (accent) {
+    var button = document.createElement("button");
+    button.type = "button";
+    button.style.background = accent.color;
+    button.title = "アクセント色: " + accent.label;
+    button.setAttribute("aria-label", "アクセント色: " + accent.label);
+    button.addEventListener("click", function () {
+      settings.accent = accent.key;
+      persist();
+      applyAccent();
+    });
+    $("accents").appendChild(button);
+    return { key: accent.key, color: accent.color, element: button };
+  });
+
+  function applyAccent() {
+    var selected = ACCENTS.filter(function (a) { return a.key === settings.accent; })[0] || ACCENTS[0];
+    document.documentElement.style.setProperty("--accent", selected.color);
+    accentButtons.forEach(function (entry) {
+      entry.element.setAttribute("aria-pressed", String(entry.key === selected.key));
+    });
+  }
+
+  /* ---- フッターの切替 ---- */
+
+  $("hourFormat").addEventListener("click", function () {
+    settings.use24h = !settings.use24h;
+    persist();
+    applyFooterLabels();
+    render(new Date(), true);
+  });
+
+  $("seconds").addEventListener("click", function () {
+    settings.showSeconds = !settings.showSeconds;
+    persist();
+    applySeconds();
+    render(new Date(), true);
+  });
+
+  $("sweep").addEventListener("click", function () {
+    settings.smoothSweep = !settings.smoothSweep;
+    persist();
+    applyFooterLabels();
+  });
+
+  function applySeconds() {
+    $("second").hidden = !settings.showSeconds;
+    $("ss").hidden = !settings.showSeconds;
+    applyFooterLabels();
+  }
+
+  function applyFooterLabels() {
+    $("hourFormat").textContent = settings.use24h ? "24H" : "12H";
+    $("seconds").textContent = settings.showSeconds ? "SEC" : "NO SEC";
+    $("sweep").textContent = settings.smoothSweep ? "SWEEP" : "TICK";
+    /* 秒を出していないときは運針の切替に意味がない。 */
+    $("sweep").disabled = !settings.showSeconds;
+  }
+
+  /* ---- 表示の更新 ---- */
+
+  var pad = function (value) { return value < 10 ? "0" + value : String(value); };
+
+  var weekdayFormatter = new Intl.DateTimeFormat("en-US", { weekday: "short" });
+  var dateFormatter = new Intl.DateTimeFormat("en-US", {
+    month: "short", day: "numeric", year: "numeric"
+  });
+
+  /* 識別子の末尾を都市名として使う。例: Asia/Tokyo → TOKYO */
+  function zoneText() {
+    var zone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+    var city = zone.split("/").pop().replace(/_/g, " ").toUpperCase();
+
+    var minutes = -new Date().getTimezoneOffset();
+    var sign = minutes < 0 ? "-" : "+";
+    var offset = "UTC" + sign + pad(Math.floor(Math.abs(minutes) / 60)) + ":" + pad(Math.abs(minutes) % 60);
+
+    /* 短縮名（JST など）が取れないロケールではオフセットだけを出す。 */
+    var short = "";
+    try {
+      var parts = new Intl.DateTimeFormat("en-US", { timeZoneName: "short" }).formatToParts(new Date());
+      var found = parts.filter(function (part) { return part.type === "timeZoneName"; })[0];
+      if (found && !/^(GMT|UTC)/.test(found.value)) short = found.value;
+    } catch (error) { /* 取れなければ省く。 */ }
+
+    return [city, short, offset].filter(Boolean).join(" · ");
+  }
+
+  var previous = {};
+
+  function write(id, value) {
+    if (previous[id] === value) return;
+    previous[id] = value;
+    $(id).textContent = value;
+  }
+
+  function rotate(id, degrees) {
+    if (previous[id] === degrees) return;
+    previous[id] = degrees;
+    $(id).style.transform = "translateX(-50%) rotate(" + degrees + "deg)";
+  }
+
+  function render(now, force) {
+    if (force) previous = {};
+
+    var hours = now.getHours();
+    var minutes = now.getMinutes();
+    var seconds = now.getSeconds();
+    var fraction = settings.smoothSweep ? now.getMilliseconds() / 1000 : 0;
+    var secondsWithFraction = seconds + fraction;
+
+    /* 針。上位の針は下位の進みを引き継いで滑らかに動かす。 */
+    rotate("hour", ((hours % 12) + minutes / 60) * 30);
+    rotate("minute", (minutes + seconds / 60) * 6);
+    if (settings.showSeconds) {
+      rotate("second", secondsWithFraction * 6);
+    }
+
+    /* デジタル。12時間表記でも桁数は変えない（等幅数字の位置を保つため）。 */
+    var shown = settings.use24h ? hours : (hours % 12 === 0 ? 12 : hours % 12);
+    write("hhmm", pad(shown) + ":" + pad(minutes));
+    if (settings.showSeconds) {
+      write("ss", pad(seconds));
+    }
+    setPeriod(settings.use24h ? "" : (hours < 12 ? "AM" : "PM"));
+
+    /* 今日の残り。 */
+    var remainingMinutes = 1440 - (hours * 60 + minutes);
+    write("remainToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
+    write("todayPercent", percentText(remainingMinutes / 1440));
+    setBar("dayBar", remainingMinutes / 1440);
+
+    /* 今月の残り。 */
+    var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    var monthMinutes = (daysInMonth - now.getDate()) * 1440 + remainingMinutes;
+    write("remainMonth", Math.floor(monthMinutes / 1440) + "D");
+    write("monthPercent", percentText(monthMinutes / (daysInMonth * 1440)));
+    setBar("monthBar", monthMinutes / (daysInMonth * 1440));
+    setAxis("monthAxis", daysInMonth);
+
+    /* 今年の残り。 */
+    var year = now.getFullYear();
+    var startOfYear = new Date(year, 0, 1);
+    var startOfToday = new Date(year, now.getMonth(), now.getDate());
+    var dayOfYear = Math.round((startOfToday - startOfYear) / 86400000) + 1;
+    var daysInYear = Math.round((new Date(year + 1, 0, 1) - startOfYear) / 86400000);
+    var daysLeft = daysInYear - dayOfYear;
+
+    write("weekday", weekdayFormatter.format(now).toUpperCase());
+    write("date", dateFormatter.format(now));
+    write("weekDayNo", "WEEK " + Math.ceil(dayOfYear / 7));
+    setAxis("yearAxis", daysInYear);
+    /* 週と日は同じ残りの別表現。合算と誤読されないよう区切りを入れる。 */
+    write("remainYear", Math.floor(daysLeft / 7) + "W | " + daysLeft + "D");
+    setBar("yearBar", daysLeft / daysInYear);
+    write("yearPercent", percentText(daysLeft / daysInYear));
+
+    renderLife(now);
+    write("zone", zoneText());
+
+    var spoken = pad(shown) + ":" + pad(minutes) + (settings.use24h ? "" : (hours < 12 ? " AM" : " PM"));
+    if (previous.spoken !== spoken) {
+      previous.spoken = spoken;
+      $("spokenTime").textContent = spoken;
+    }
+  }
+
+  /* 目盛り。バーは線形なので、ラベルも4等分した位置の値をそのまま置く。
+     きりのいい数字に丸めると位置と値がずれて読み違えのもとになる。 */
+  function setAxis(id, maximum) {
+    if (previous[id] === maximum) return;
+    previous[id] = maximum;
+
+    var labels = [];
+    for (var step = 4; step >= 0; step--) {
+      labels.push(Math.round((maximum * step) / 4));
+    }
+    $(id).innerHTML = labels.map(function (value) {
+      return "<span>" + value + "</span>";
+    }).join("");
+  }
+
+  /* 生まれてから目標年齢の誕生日までを 1 本のバーで表す。
+     他のバーと同じく、塗りが「残り」で右に向かって減る。 */
+  function parseBirth(raw) {
+    var m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec((raw || "").trim());
+    if (!m) return null;
+    var birth = { year: +m[1], month: +m[2], day: +m[3] };
+    if (birth.month < 1 || birth.month > 12 || birth.day < 1 || birth.day > 31) return null;
+    return birth;
+  }
+
+  /* 生年月日が未設定のあいだは値を伏せておく。設定はラベルのクリックで。 */
+  function renderLife(now) {
+    write("lifeLabel", "REMAINING TO AGE " + TARGET_AGE);
+    setAxis("lifeAxis", TARGET_AGE);
+
+    var BIRTH = parseBirth(settings.birth);
+    if (!BIRTH) {
+      write("remainLife", "—");
+      write("lifePercent", "—");
+      setBar("lifeBar", 0);
+      return;
+    }
+
+    var birth = new Date(BIRTH.year, BIRTH.month - 1, BIRTH.day);
+    var end = new Date(BIRTH.year + TARGET_AGE, BIRTH.month - 1, BIRTH.day);
+
+    var span = end - birth;
+    var remaining = Math.max(0, end - now);
+
+    /* 年齢は暦どおりに数える。誕生日が来ていない年は 1 引く。 */
+    var age = now.getFullYear() - BIRTH.year;
+    if (now.getMonth() + 1 < BIRTH.month ||
+        (now.getMonth() + 1 === BIRTH.month && now.getDate() < BIRTH.day)) {
+      age -= 1;
+    }
+
+    write(
+      "remainLife",
+      Math.max(0, TARGET_AGE - age) + "Y | " +
+        Math.floor(remaining / 86400000).toLocaleString("en-US") + "D"
+    );
+    setBar("lifeBar", remaining / span);
+    write("lifePercent", percentText(remaining / span));
+  }
+
+  function setPeriod(value) {
+    if (previous.period === value) return;
+    previous.period = value;
+    var element = $("period");
+    element.textContent = value;
+    element.hidden = value === "";
+  }
+
+  function percentText(fraction) {
+    return Math.round(Math.max(0, Math.min(1, fraction)) * 100) + "%";
+  }
+
+  function setBar(id, fraction) {
+    var percent = Math.max(0, Math.min(1, fraction)) * 100;
+    var value = percent.toFixed(2) + "%";
+    if (previous[id] === value) return;
+    previous[id] = value;
+    $(id).style.width = value;
+  }
+
+  /* ---- 時刻のずれの確認 ----
+     ブラウザからは NTP（UDP）を使えないので、HTTP の Date ヘッダーで代用する。
+     Date は秒単位なので精度は約 1 秒。往復時間の半分を足して補正する。 */
+
+  var syncButton = $("sync");
+  var checking = false;
+
+  async function checkSync() {
+    if (checking) return;
+    checking = true;
+    syncButton.textContent = "SYNC …";
+
+    try {
+      var sentAt = Date.now();
+      var response = await fetch(location.href, { method: "HEAD", cache: "no-store" });
+      var receivedAt = Date.now();
+
+      var header = response.headers.get("date");
+      if (!header) throw new Error("サーバーが時刻を返しませんでした");
+
+      var serverMs = Date.parse(header);
+      if (isNaN(serverMs)) throw new Error("時刻を読み取れませんでした");
+
+      /* Date は切り捨てなので、実際の時刻は +0〜1 秒の範囲にある。 */
+      var offset = (serverMs + 500) - (sentAt + receivedAt) / 2;
+      var ok = Math.abs(offset) <= TOLERANCE_MS;
+
+      syncButton.textContent = ok ? "SYNC OK" : "SYNC —";
+      syncButton.dataset.ok = String(ok);
+      syncButton.title =
+        (ok ? "サーバー時刻とのずれ " : "時計が ") +
+        (offset > 0 ? "+" : "") + Math.round(offset) + " ms" +
+        (ok ? "" : " ずれています") +
+        "（HTTP の Date ヘッダーで確認、精度は約1秒）。クリックで再確認します。";
+    } catch (error) {
+      syncButton.textContent = "SYNC —";
+      syncButton.dataset.ok = "false";
+      syncButton.title = "時刻を確認できません（" + error.message + "）。クリックで再試行します。";
+    } finally {
+      checking = false;
+    }
+  }
+
+  syncButton.addEventListener("click", checkSync);
+
+  /* 生年月日の設定。ラベルをクリックして YYYY-MM-DD で入力する。 */
+  $("lifeLabel").title = "クリックで生年月日を設定します（この端末にだけ保存されます）";
+  $("lifeLabel").style.cursor = "pointer";
+  $("lifeLabel").addEventListener("click", function () {
+    var input = window.prompt(
+      "生年月日を YYYY-MM-DD で入力してください（この端末にだけ保存されます）",
+      settings.birth || "1990-01-01"
+    );
+    if (input === null) return;
+    if (parseBirth(input)) {
+      settings.birth = input.trim();
+      persist();
+      render(new Date(), true);
+    }
+  });
+
+  /* ---- 拡大縮小 ---- */
+
+  /* 画面の縁との余白（拡大前の実ピクセル）。 */
+  var MARGIN = 20;
+
+  function fit() {
+    var availableWidth = Math.max(window.innerWidth - MARGIN * 2, 1);
+    var availableHeight = Math.max(window.innerHeight - MARGIN * 2, 1);
+
+    /* 縦向きの画面では文字盤を上、パネルを下に積んだ基準キャンバスに切り替える。 */
+    var portrait = availableHeight > availableWidth;
+    var baseWidth = portrait ? 560 : 980;
+    var baseHeight = portrait ? 1150 : 576;
+    $("stage").classList.toggle("portrait", portrait);
+
+    /* 文字盤の目盛りや針は 512px 前提の絶対値で組んであるので、
+       比率は変えずに拡大率だけを決める。 */
+    var scale = Math.min(availableWidth / baseWidth, availableHeight / baseHeight);
+
+    /* 余った側はステージ自体を広げて埋める。増えたぶんは flex で
+       デジタルカラム（横）と本体（縦）が受け取る。 */
+    var stage = $("stage");
+    stage.style.width = availableWidth / scale + "px";
+    stage.style.height = availableHeight / scale + "px";
+    stage.style.transform = "translate(-50%, -50%) scale(" + scale + ")";
+  }
+
+  window.addEventListener("resize", fit);
+
+  /* ---- 起動 ---- */
+
+  applyWeight();
+  applyAccent();
+  applySeconds();
+  reportFontStatus();
+  fit();
+  render(new Date(), true);
+  checkSync();
+  setInterval(checkSync, 15 * 60 * 1000);
+
+  (function tick() {
+    render(new Date(), false);
+    requestAnimationFrame(tick);
+  })();
+})();
+</script>

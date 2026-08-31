@@ -42,10 +42,13 @@ struct DigitalPanelView: View {
             HStack(alignment: .firstTextBaseline) {
                 sectionLabel("REMAINING TODAY")
                 Spacer(minLength: 0)
-                Text(progress.remainingTodayText)
-                    .font(AppFont.archivo(size: 15, weight: 600))
-                    .monospacedDigit()
-                    .foregroundStyle(Theme.textPrimary)
+                HStack(alignment: .firstTextBaseline, spacing: 12) {
+                    Text(progress.remainingTodayText)
+                    Text(smallPercentText(progress.dayRemainingFraction))
+                }
+                .font(AppFont.archivo(size: 15, weight: 600))
+                .monospacedDigit()
+                .foregroundStyle(Theme.textPrimary)
             }
 
             RemainingBar(fraction: progress.dayRemainingFraction, accent: accent)
@@ -146,6 +149,10 @@ struct DigitalPanelView: View {
                 .tracking(em: 0.14, size: 12)
                 .foregroundStyle(Theme.textTertiary)
         }
+    }
+
+    private func smallPercentText(_ fraction: Double) -> String {
+        "\(Int((min(max(fraction, 0), 1) * 100).rounded()))%"
     }
 
     /// バーが示す残りの割合。隣の日数と同じ大きさで並べる。

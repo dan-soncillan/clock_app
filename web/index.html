@@ -230,6 +230,13 @@
     color: var(--text-primary);
   }
 
+  /* 残り時間と残り%を右端にまとめる。 */
+  .label-group {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+
   /* 塗りは「残り」を表すので、トラックの右端から伸ばす。 */
   .bar {
     height: 4px;
@@ -456,7 +463,10 @@
 
         <div class="label-row">
           <span class="section-label">REMAINING TODAY</span>
-          <span class="label-value" id="remainToday">0H 0M</span>
+          <span class="label-group">
+            <span class="label-value" id="remainToday">00:00</span>
+            <span class="label-value" id="todayPercent">0%</span>
+          </span>
         </div>
         <div class="bar"><span id="dayBar"></span></div>
         <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
@@ -769,6 +779,7 @@
     /* 今日の残り。 */
     var remainingMinutes = 1440 - (hours * 60 + minutes);
     write("remainToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
+    write("todayPercent", percentText(remainingMinutes / 1440));
     setBar("dayBar", remainingMinutes / 1440);
 
     /* 今年の残り。 */

@@ -1,0 +1,48 @@
+name: Build
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ツールチェーンを表示
+        run: swift --version
+
+      - name: テスト
+        run: swift test
+
+      - name: .app を組み立てる
+        run: make app
+
+      # ダウンロードして実行できるよう、実行権限ごと固めておく。
+      - name: 配布用に圧縮
+        run: ditto -c -k --keepParent dist/Clock.app dist/Clock.zip
+
+      - name: 成果物をアップロード
+        uses: actions/upload-artifact@v4
+        with:
+          name: Clock-macOS
+          path: dist/Clock.zip
+          if-no-files-found: error
+
+      # タグを打ったときだけ、恒久的なダウンロード先としてリリースを作る。
+      - name: リリースを作成
+        if: startsWith(github.ref, 'refs/tags/v')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" dist/Clock.zip \
+            --title "Clock $GITHUB_REF_NAME" \
+            --generate-notes

@@ -23,12 +23,28 @@ SwiftUI + Swift Package Manager 製。デザインハンドオフ「Clock — �
 - macOS 14 以降
 - Swift 5.9 以降（Xcode 15 以降に同梱）
 
-## 使い方
+## 入手して起動する
+
+### ビルド済みのアプリをダウンロードする（ターミナル不要）
+
+1. GitHub のリポジトリで **Actions** タブを開く
+2. 最新の成功したビルド（緑のチェック）をクリック
+3. ページ下部の **Artifacts** から `Clock-macOS` をダウンロード
+4. ダウンロードした zip を開くと `Clock.app` が出てくるので、
+   アプリケーションフォルダに入れてダブルクリック
+
+初回だけ「開発元を確認できないため開けません」と出る。署名がアドホックのため。
+**システム設定 → プライバシーとセキュリティ** を開き、下の方に出ている
+`Clock.app` の項目で **このまま開く** を押すと、以降はダブルクリックで起動する。
+
+タグ（`v1.0.0` など）を打つと、同じものが **Releases** にも並ぶ。
+
+### 自分でビルドする
 
 ```sh
-make run    # そのまま起動して動きを確認する
-make open   # .app バンドルを組み立てて開く（dist/Clock.app）
+make open   # .app を組み立てて開く（dist/Clock.app）
 make test   # ClockCore のユニットテスト
+make run    # 実行ファイルを直接起動（Dock アイコンが出ないなど簡易的）
 ```
 
 Xcode で開きたい場合は、このディレクトリを `File > Open` でそのまま開けば
@@ -66,6 +82,7 @@ Sources/
 Tests/ClockCoreTests/     ClockCore のユニットテスト
 Resources/Info.plist      .app バンドル用の Info.plist
 design/                   デザインハンドオフ一式（実装の基準）
+.github/workflows/        macOS ランナーでのテストと .app のビルド
 ```
 
 ### 設計メモ

@@ -26,6 +26,8 @@ app:
 	cp $(BIN) $(BUNDLE)/Contents/MacOS/ClockApp
 	# 同梱フォントは SwiftPM のリソースバンドル経由で読む。
 	cp -R .build/$(CONFIG)/ClockApp_ClockApp.bundle $(BUNDLE)/Contents/Resources/
+	# 署名しておかないと Apple Silicon では起動を拒否される。
+	codesign --force --sign - $(BUNDLE)
 	@echo "built $(BUNDLE)"
 
 open: app

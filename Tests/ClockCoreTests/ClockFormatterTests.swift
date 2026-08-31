@@ -28,6 +28,24 @@ final class ClockFormatterTests: XCTestCase {
         XCTAssertEqual(formatter.hourMinuteText(for: date(hour: 12, minute: 30, second: 0)), "12:30")
     }
 
+    func testPeriodOnlyAppearsInTwelveHourClock() {
+        let twentyFour = ClockFormatter(timeZone: tokyo, uses24HourClock: true)
+        XCTAssertNil(twentyFour.periodText(for: date(hour: 15, minute: 20, second: 0)))
+
+        let twelve = ClockFormatter(timeZone: tokyo, uses24HourClock: false)
+        XCTAssertEqual(twelve.periodText(for: date(hour: 15, minute: 20, second: 0)), "PM")
+        XCTAssertEqual(twelve.periodText(for: date(hour: 9, minute: 0, second: 0)), "AM")
+        XCTAssertEqual(twelve.periodText(for: date(hour: 0, minute: 0, second: 0)), "AM")
+        XCTAssertEqual(twelve.periodText(for: date(hour: 12, minute: 0, second: 0)), "PM")
+    }
+
+    func testNoonReadsTheSameInBothFormats() {
+        // 12時台は両方の表記が同じ文字列になる。AM/PM が無いと区別できない。
+        let noon = date(hour: 12, minute: 7, second: 0)
+        XCTAssertEqual(ClockFormatter(timeZone: tokyo, uses24HourClock: true).hourMinuteText(for: noon), "12:07")
+        XCTAssertEqual(ClockFormatter(timeZone: tokyo, uses24HourClock: false).hourMinuteText(for: noon), "12:07")
+    }
+
     func testSecondIsPadded() {
         let formatter = ClockFormatter(timeZone: tokyo)
         XCTAssertEqual(formatter.secondText(for: date(hour: 11, minute: 25, second: 3)), "03")

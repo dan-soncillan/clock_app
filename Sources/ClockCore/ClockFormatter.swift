@@ -39,6 +39,14 @@ public struct ClockFormatter: Sendable {
         return "\(Self.twoDigits(hour)):\(Self.twoDigits(parts.minute ?? 0))"
     }
 
+    /// 12 時間表記のときだけ返す `AM` / `PM`。
+    ///
+    /// これが無いと 12 時間表記で午前と午後を区別できない。
+    public func periodText(for date: Date) -> String? {
+        guard !uses24HourClock else { return nil }
+        return calendar.component(.hour, from: date) < 12 ? "AM" : "PM"
+    }
+
     /// アクセント色で添える `SS`。
     public func secondText(for date: Date) -> String {
         Self.twoDigits(calendar.component(.second, from: date))

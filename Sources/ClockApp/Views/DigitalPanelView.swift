@@ -66,6 +66,13 @@ struct DigitalPanelView: View {
                     .monospacedDigit()
                     .foregroundStyle(accent)
             }
+
+            if let period = formatter.periodText(for: date) {
+                Text(period)
+                    .font(AppFont.archivo(size: 22, weight: 600))
+                    .tracking(em: 0.08, size: 22)
+                    .foregroundStyle(Theme.textTertiary)
+            }
         }
     }
 

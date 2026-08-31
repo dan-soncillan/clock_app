@@ -14,29 +14,44 @@ struct RootView: View {
 
     var body: some View {
         GeometryReader { proxy in
-            let scale = min(
-                proxy.size.width / Theme.canvasSize.width,
-                proxy.size.height / Theme.canvasSize.height
-            )
-
-            TimelineView(schedule) { context in
-                canvas(for: context.date)
-            }
-            .frame(width: Theme.canvasSize.width, height: Theme.canvasSize.height)
-            .scaleEffect(scale)
-            .frame(width: proxy.size.width, height: proxy.size.height)
+            timeline(scale: scale(for: proxy.size), windowSize: proxy.size)
         }
         .background(Theme.windowBackground)
         .background(WindowConfigurator())
         .preferredColorScheme(.dark)
     }
 
+    /// 基準サイズに対する倍率。縦横のうち収まる方に合わせる。
+    private func scale(for windowSize: CGSize) -> CGFloat {
+        min(
+            windowSize.width / Theme.canvasSize.width,
+            windowSize.height / Theme.canvasSize.height
+        )
+    }
+
     /// 秒針を滑らかに動かすときだけ毎フレーム更新し、それ以外は 1 秒おきに留める。
-    private var schedule: AnyTimelineSchedule {
+    ///
+    /// スケジュールは型消去せず、分岐して具体型のまま渡す。`.animation` は
+    /// SwiftUI 側で画面のリフレッシュに同期させる特別な扱いを受けるため。
+    @ViewBuilder
+    private func timeline(scale: CGFloat, windowSize: CGSize) -> some View {
         if settings.showSeconds && settings.smoothSweep {
-            return AnyTimelineSchedule(AnimationTimelineSchedule())
+            TimelineView(.animation) { context in
+                scaled(canvas(for: context.date), scale: scale, windowSize: windowSize)
+            }
+        } else {
+            TimelineView(.periodic(from: .now, by: 1)) { context in
+                scaled(canvas(for: context.date), scale: scale, windowSize: windowSize)
+            }
         }
-        return AnyTimelineSchedule(PeriodicTimelineSchedule(from: .now, by: 1))
+    }
+
+    /// 基準サイズで組んだ画面を、実ウィンドウに合わせて拡大縮小して中央に置く。
+    private func scaled(_ content: some View, scale: CGFloat, windowSize: CGSize) -> some View {
+        content
+            .frame(width: Theme.canvasSize.width, height: Theme.canvasSize.height)
+            .scaleEffect(scale)
+            .frame(width: windowSize.width, height: windowSize.height)
     }
 
     private func canvas(for date: Date) -> some View {

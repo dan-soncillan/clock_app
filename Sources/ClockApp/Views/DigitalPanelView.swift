@@ -3,7 +3,9 @@ import SwiftUI
 
 /// 右側のデジタル情報カラム。
 ///
-/// 「現在」ブロックと「日付・年」ブロックを 1px の区切り線で分ける。
+/// 上が時計のセクション（時刻と日付）、区切り線を1本はさんで、
+/// 下が残量のセクション（今日・今週・今月・今年・生涯の5本のバー）。
+/// 今日だけを大きな数字で出す。いちばん動きが速く、いちばん見る値だから。
 struct DigitalPanelView: View {
     var date: Date
     var formatter: ClockFormatter
@@ -15,22 +17,21 @@ struct DigitalPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
-            nowBlock
+            clockBlock
+
+            // 区切り線はここ1本だけ。時計と残量のセクションを分ける。
             Rectangle()
                 .fill(Theme.borderStrong)
                 .frame(height: 1)
-            dateBlock
-            Rectangle()
-                .fill(Theme.borderStrong)
-                .frame(height: 1)
-            lifeBlock
+
+            remaindersBlock
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
-    // MARK: - ブロック1「現在」
+    // MARK: - 時計のセクション
 
-    private var nowBlock: some View {
+    private var clockBlock: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(formatter.timeZoneText(for: date))
                 .font(AppFont.archivo(size: 11, weight: 600))
@@ -42,36 +43,6 @@ struct DigitalPanelView: View {
                 Spacer(minLength: 0)
                 dateInfo
             }
-
-            HStack(alignment: .firstTextBaseline) {
-                sectionLabel("REMAINING TODAY")
-                Spacer(minLength: 0)
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(progress.remainingTodayText)
-                    Text(smallPercentText(progress.dayRemainingFraction))
-                }
-                .font(AppFont.archivo(size: 15, weight: 600))
-                .monospacedDigit()
-                .foregroundStyle(Theme.textPrimary)
-            }
-
-            RemainingBar(fraction: progress.dayRemainingFraction, accent: accent)
-            AxisLabels(labels: ["24", "18", "12", "06", "0"])
-
-            HStack(alignment: .firstTextBaseline) {
-                sectionLabel("REMAINING IN WEEK")
-                Spacer(minLength: 0)
-                HStack(alignment: .firstTextBaseline, spacing: 12) {
-                    Text(progress.remainingWeekText)
-                    Text(smallPercentText(progress.weekRemainingFraction))
-                }
-                .font(AppFont.archivo(size: 15, weight: 600))
-                .monospacedDigit()
-                .foregroundStyle(Theme.textPrimary)
-            }
-
-            RemainingBar(fraction: progress.weekRemainingFraction, accent: accent)
-            AxisLabels(labels: progress.weekAxisMilestones.map(String.init))
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(Text("デジタル時計"))
@@ -124,68 +95,61 @@ struct DigitalPanelView: View {
         }
     }
 
-    // MARK: - ブロック2「日付・年」
+    // MARK: - 残量のセクション
 
-    private var dateBlock: some View {
+    private var remaindersBlock: some View {
         VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("REMAINING IN \(progress.year)")
-
+            // 今日だけ大きな数字で。
+            sectionLabel("REMAINING TODAY")
             HStack(alignment: .firstTextBaseline, spacing: 26) {
-                remainingValue(progress.weeksRemaining, unit: "WEEKS")
-                remainingValue(progress.daysRemaining, unit: "DAYS")
-                percentLabel(progress.yearRemainingFraction)
+                bigValue(progress.remainingTodayText)
+                bigValue(percentText(progress.dayRemainingFraction))
             }
+            RemainingBar(fraction: progress.dayRemainingFraction, accent: accent)
+            AxisLabels(labels: ["24", "18", "12", "06", "0"])
 
+            compactRow("REMAINING IN WEEK", progress.remainingWeekText, progress.weekRemainingFraction)
+            RemainingBar(fraction: progress.weekRemainingFraction, accent: accent)
+            AxisLabels(labels: progress.weekAxisMilestones.map(String.init))
+
+            compactRow("REMAINING IN MONTH", progress.remainingMonthText, progress.monthRemainingFraction)
+            RemainingBar(fraction: progress.monthRemainingFraction, accent: accent)
+            AxisLabels(labels: progress.monthAxisMilestones.map(String.init))
+
+            compactRow("REMAINING IN YEAR", progress.remainingYearText, progress.yearRemainingFraction)
             RemainingBar(fraction: progress.yearRemainingFraction, accent: accent)
-            // 上の残時間バーと同じく、右に向かって 0 に近づく残り日数の目盛り。
             AxisLabels(labels: progress.yearAxisMilestones.map(String.init))
-        }
-    }
 
-    // MARK: - ブロック3「生涯の残り」
-
-    private var lifeBlock: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            sectionLabel("REMAINING TO AGE \(life.targetAge)")
-
-            HStack(alignment: .firstTextBaseline, spacing: 26) {
-                remainingValue(life.yearsRemaining, unit: "YEARS")
-                remainingValue(life.daysRemaining, unit: "DAYS", grouped: true)
-                percentLabel(life.remainingFraction)
-            }
-
+            compactRow("REMAINING TO AGE \(life.targetAge)", life.remainingText, life.remainingFraction)
             RemainingBar(fraction: life.remainingFraction, accent: accent)
             AxisLabels(labels: life.axisMilestones.map(String.init))
         }
     }
 
-    private func remainingValue(_ value: Int, unit: String, grouped: Bool = false) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 7) {
-            // 桁数の多い日数だけ 3 桁区切りを入れる。
-            Text(grouped ? value.formatted(.number.grouping(.automatic)) : "\(value)")
-                .font(AppFont.archivo(size: 40, weight: 600))
-                .monospacedDigit()
-                .foregroundStyle(Theme.textPrimary)
-                .lineHeight(0.9, size: 40)
-            Text(unit)
-                .font(AppFont.archivo(size: 12, weight: 500))
-                .tracking(em: 0.14, size: 12)
-                .foregroundStyle(Theme.textTertiary)
+    private func compactRow(_ label: String, _ value: String, _ fraction: Double) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            sectionLabel(label)
+            Spacer(minLength: 0)
+            HStack(alignment: .firstTextBaseline, spacing: 12) {
+                Text(value)
+                Text(percentText(fraction))
+            }
+            .font(AppFont.archivo(size: 15, weight: 600))
+            .monospacedDigit()
+            .foregroundStyle(Theme.textPrimary)
         }
     }
 
-    private func smallPercentText(_ fraction: Double) -> String {
-        "\(Int((min(max(fraction, 0), 1) * 100).rounded()))%"
-    }
-
-    /// バーが示す残りの割合。隣の日数と同じ大きさで並べる。
-    private func percentLabel(_ fraction: Double) -> some View {
-        let percent = Int((min(max(fraction, 0), 1) * 100).rounded())
-        return Text("\(percent)%")
+    private func bigValue(_ text: String) -> some View {
+        Text(text)
             .font(AppFont.archivo(size: 40, weight: 600))
             .monospacedDigit()
             .foregroundStyle(Theme.textPrimary)
             .lineHeight(0.9, size: 40)
+    }
+
+    private func percentText(_ fraction: Double) -> String {
+        "\(Int((min(max(fraction, 0), 1) * 100).rounded()))%"
     }
 
     private func sectionLabel(_ text: String) -> some View {

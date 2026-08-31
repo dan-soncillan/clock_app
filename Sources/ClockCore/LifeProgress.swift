@@ -15,6 +15,12 @@ public struct LifeProgress: Equatable, Sendable {
     /// バーの塗り幅（0...1）。
     public var remainingFraction: Double
 
+    /// 残りの表示文字列（例: `47Y 16,996D`）。
+    public var remainingText: String {
+        let days = daysRemaining.formatted(.number.grouping(.automatic))
+        return "\(yearsRemaining)Y \(days)D"
+    }
+
     /// 目盛り。4 等分した位置に置く値を左から返す（例: `[80, 60, 40, 20, 0]`）。
     public var axisMilestones: [Int] {
         stride(from: 4, through: 0, by: -1).map { step in

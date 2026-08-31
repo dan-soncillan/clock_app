@@ -310,34 +310,14 @@
     color: var(--text-label);
   }
 
-  .counts {
+  /* 今日の残りだけを大きく出す。いちばん動きが速く、いちばん見る値。 */
+  .big-row {
     display: flex;
     align-items: baseline;
     gap: 26px;
   }
 
-  .count {
-    display: flex;
-    align-items: baseline;
-    gap: 7px;
-  }
-
-  .count b {
-    font-size: 40px;
-    font-weight: 600;
-    line-height: 0.9;
-    color: var(--text-primary);
-  }
-
-  .count span {
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    color: var(--text-tertiary);
-  }
-
-  /* バーが示す残りの割合。隣の日数と同じ大きさで並べる。 */
-  .count-percent {
+  .big-row b {
     font-size: 40px;
     font-weight: 600;
     line-height: 0.9;
@@ -489,13 +469,18 @@
           </div>
         </div>
         <p class="visually-hidden" id="spokenTime" aria-live="polite"></p>
+      </section>
 
+      <!-- 区切り線はここ 1 本だけ。時計のセクションと残量のセクションを分ける。 -->
+      <div class="rule"></div>
+
+      <section class="block">
         <div class="label-row">
           <span class="section-label">REMAINING TODAY</span>
-          <span class="label-group">
-            <span class="label-value" id="remainToday">00:00</span>
-            <span class="label-value" id="todayPercent">0%</span>
-          </span>
+        </div>
+        <div class="big-row">
+          <b id="remainToday">00:00</b>
+          <b id="todayPercent">0%</b>
         </div>
         <div class="bar"><span id="dayBar"></span></div>
         <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
@@ -509,38 +494,34 @@
         </div>
         <div class="bar"><span id="weekBar"></span></div>
         <div class="axis"><span>7</span><span>6</span><span>5</span><span>4</span><span>3</span><span>2</span><span>1</span><span>0</span></div>
-      </section>
 
-      <div class="rule"></div>
-
-      <section class="block">
         <div class="label-row">
-          <span class="section-label" id="remainingYearLabel">REMAINING IN 2026</span>
+          <span class="section-label">REMAINING IN MONTH</span>
+          <span class="label-group">
+            <span class="label-value" id="remainMonth">0D 00:00</span>
+            <span class="label-value" id="monthPercent">0%</span>
+          </span>
         </div>
+        <div class="bar"><span id="monthBar"></span></div>
+        <div class="axis" id="monthAxis"></div>
 
-        <div class="counts">
-          <div class="count"><b id="weeksLeft">0</b><span>WEEKS</span></div>
-          <div class="count"><b id="daysLeft">0</b><span>DAYS</span></div>
-          <span class="count-percent" id="yearPercent">0%</span>
+        <div class="label-row">
+          <span class="section-label">REMAINING IN YEAR</span>
+          <span class="label-group">
+            <span class="label-value" id="remainYear">0W 0D</span>
+            <span class="label-value" id="yearPercent">0%</span>
+          </span>
         </div>
-
         <div class="bar"><span id="yearBar"></span></div>
         <div class="axis" id="yearAxis"></div>
-      </section>
 
-      <div class="rule"></div>
-
-      <section class="block">
         <div class="label-row">
           <span class="section-label" id="lifeLabel">REMAINING TO AGE 80</span>
+          <span class="label-group">
+            <span class="label-value" id="remainLife">0Y 0D</span>
+            <span class="label-value" id="lifePercent">0%</span>
+          </span>
         </div>
-
-        <div class="counts">
-          <div class="count"><b id="lifeYears">0</b><span>YEARS</span></div>
-          <div class="count"><b id="lifeDays">0</b><span>DAYS</span></div>
-          <span class="count-percent" id="lifePercent">0%</span>
-        </div>
-
         <div class="bar"><span id="lifeBar"></span></div>
         <div class="axis" id="lifeAxis"></div>
       </section>
@@ -823,6 +804,16 @@
     write("weekPercent", percentText(weekMinutes / 10080));
     setBar("weekBar", weekMinutes / 10080);
 
+    /* 今月の残り。 */
+    var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+    var monthMinutes = (daysInMonth - now.getDate()) * 1440 + remainingMinutes;
+    var monthDays = Math.floor(monthMinutes / 1440);
+    var monthRest = monthMinutes % 1440;
+    write("remainMonth", monthDays + "D " + pad(Math.floor(monthRest / 60)) + ":" + pad(monthRest % 60));
+    write("monthPercent", percentText(monthMinutes / (daysInMonth * 1440)));
+    setBar("monthBar", monthMinutes / (daysInMonth * 1440));
+    setAxis("monthAxis", daysInMonth);
+
     /* 今年の残り。 */
     var year = now.getFullYear();
     var startOfYear = new Date(year, 0, 1);
@@ -834,10 +825,8 @@
     write("weekday", weekdayFormatter.format(now).toUpperCase());
     write("date", dateFormatter.format(now));
     write("weekDayNo", "WEEK " + Math.ceil(dayOfYear / 7));
-    write("remainingYearLabel", "REMAINING IN " + year);
     setAxis("yearAxis", daysInYear);
-    write("weeksLeft", String(Math.floor(daysLeft / 7)));
-    write("daysLeft", String(daysLeft));
+    write("remainYear", Math.floor(daysLeft / 7) + "W " + daysLeft + "D");
     setBar("yearBar", daysLeft / daysInYear);
     write("yearPercent", percentText(daysLeft / daysInYear));
 
@@ -883,8 +872,11 @@
     }
 
     write("lifeLabel", "REMAINING TO AGE " + TARGET_AGE);
-    write("lifeYears", String(Math.max(0, TARGET_AGE - age)));
-    write("lifeDays", Math.floor(remaining / 86400000).toLocaleString("en-US"));
+    write(
+      "remainLife",
+      Math.max(0, TARGET_AGE - age) + "Y " +
+        Math.floor(remaining / 86400000).toLocaleString("en-US") + "D"
+    );
     setBar("lifeBar", remaining / span);
     write("lifePercent", percentText(remaining / span));
     setAxis("lifeAxis", TARGET_AGE);

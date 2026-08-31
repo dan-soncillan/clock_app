@@ -23,6 +23,10 @@ public struct CalendarProgress: Equatable, Sendable {
     public var weekNumber: Int
     /// 今週の残り分。週は月曜 0:00 に始まり、次の月曜 0:00 で終わる。
     public var remainingMinutesInWeek: Int
+    /// 今月の日数（28〜31）。
+    public var daysInMonth: Int
+    /// 今月の残り分。
+    public var remainingMinutesInMonth: Int
 
     /// 残時間バーの塗り幅（0...1）。
     public var dayRemainingFraction: Double {
@@ -51,6 +55,30 @@ public struct CalendarProgress: Equatable, Sendable {
         Array(stride(from: 7, through: 0, by: -1))
     }
 
+    /// 今月の残りバーの塗り幅（0...1）。
+    public var monthRemainingFraction: Double {
+        Double(remainingMinutesInMonth) / Double(daysInMonth * 1440)
+    }
+
+    /// 今月の残りの表示文字列（例: `13D 08:40`）。
+    public var remainingMonthText: String {
+        let days = remainingMinutesInMonth / 1440
+        let rest = remainingMinutesInMonth % 1440
+        return String(format: "%dD %02d:%02d", days, rest / 60, rest % 60)
+    }
+
+    /// 今月の残りバーの目盛り。月の日数を 4 等分した位置の値。
+    public var monthAxisMilestones: [Int] {
+        stride(from: 4, through: 0, by: -1).map { step in
+            Int((Double(daysInMonth) * Double(step) / 4).rounded())
+        }
+    }
+
+    /// 今年の残りの表示文字列（例: `17W 122D`）。
+    public var remainingYearText: String {
+        "\(weeksRemaining)W \(daysRemaining)D"
+    }
+
     /// 残り日数バーの目盛り。4 等分した位置に置く値を左から返す。
     ///
     /// バーは線形なので、きりのいい数字に丸めず位置どおりの値を出す。
@@ -73,7 +101,7 @@ public struct CalendarProgress: Equatable, Sendable {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
 
-        let parts = calendar.dateComponents([.year, .hour, .minute], from: date)
+        let parts = calendar.dateComponents([.year, .day, .hour, .minute], from: date)
         year = parts.year ?? 0
         remainingMinutesToday = 1440 - ((parts.hour ?? 0) * 60 + (parts.minute ?? 0))
 
@@ -82,6 +110,9 @@ public struct CalendarProgress: Equatable, Sendable {
         var daysToMonday = (9 - weekday) % 7
         if daysToMonday == 0 { daysToMonday = 7 }
         remainingMinutesInWeek = daysToMonday * 1440 - ((parts.hour ?? 0) * 60 + (parts.minute ?? 0))
+
+        daysInMonth = calendar.range(of: .day, in: .month, for: date)?.count ?? 30
+        remainingMinutesInMonth = (daysInMonth - (parts.day ?? 1)) * 1440 + remainingMinutesToday
 
         dayOfYear = calendar.ordinality(of: .day, in: .year, for: date) ?? 1
         daysInYear = calendar.range(of: .day, in: .year, for: date)?.count ?? 365

@@ -45,6 +45,14 @@ final class CalendarProgressTests: XCTestCase {
         XCTAssertEqual(progress.yearRemainingFraction, 0, accuracy: 0.0001)
     }
 
+    func testYearAxisIsQuartered() {
+        let progress = CalendarProgress(date: date(hour: 11, minute: 25), timeZone: tokyo)
+        XCTAssertEqual(progress.yearAxisMilestones, [365, 274, 183, 91, 0])
+
+        let leap = CalendarProgress(date: date(year: 2028, month: 3, day: 1), timeZone: tokyo)
+        XCTAssertEqual(leap.yearAxisMilestones, [366, 275, 183, 92, 0])
+    }
+
     func testLeapYearHas366Days() {
         let progress = CalendarProgress(date: date(year: 2028, month: 3, day: 1), timeZone: tokyo)
         XCTAssertEqual(progress.daysInYear, 366)

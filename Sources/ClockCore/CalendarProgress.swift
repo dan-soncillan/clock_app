@@ -32,6 +32,16 @@ public struct CalendarProgress: Equatable, Sendable {
         Double(daysRemaining) / Double(daysInYear)
     }
 
+    /// 残り日数バーの目盛り。4 等分した位置に置く値を左から返す。
+    ///
+    /// バーは線形なので、きりのいい数字に丸めず位置どおりの値を出す。
+    /// 例: 365 日の年なら `[365, 274, 183, 91, 0]`。
+    public var yearAxisMilestones: [Int] {
+        stride(from: 4, through: 0, by: -1).map { step in
+            Int((Double(daysInYear) * Double(step) / 4).rounded())
+        }
+    }
+
     /// 残り時間の表示文字列（例: `12H 35M`）。
     public var remainingTodayText: String {
         "\(remainingMinutesToday / 60)H \(remainingMinutesToday % 60)M"

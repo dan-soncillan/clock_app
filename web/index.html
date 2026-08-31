@@ -437,7 +437,7 @@
         </div>
 
         <div class="bar"><span id="yearBar"></span></div>
-        <div class="axis"><span id="yearAxisStart">365</span><span>0</span></div>
+        <div class="axis" id="yearAxis"></div>
       </section>
     </div>
   </div>
@@ -658,7 +658,7 @@
     write("date", dateFormatter.format(now));
     write("weekDayNo", "WEEK " + Math.ceil(dayOfYear / 7) + " · DAY " + dayOfYear + " OF " + daysInYear);
     write("remainingYearLabel", "REMAINING IN " + year);
-    write("yearAxisStart", String(daysInYear));
+    setYearAxis(daysInYear);
     write("weeksLeft", String(Math.floor(daysLeft / 7)));
     write("daysLeft", String(daysLeft));
     setBar("yearBar", daysLeft / daysInYear);
@@ -670,6 +670,21 @@
       previous.spoken = spoken;
       $("spokenTime").textContent = spoken;
     }
+  }
+
+  /* 残り日数の目盛り。バーは線形なので、ラベルも4等分した位置の値をそのまま置く。
+     きりのいい数字に丸めると位置と値がずれて読み違えのもとになる。 */
+  function setYearAxis(daysInYear) {
+    if (previous.yearAxis === daysInYear) return;
+    previous.yearAxis = daysInYear;
+
+    var labels = [];
+    for (var step = 4; step >= 0; step--) {
+      labels.push(Math.round((daysInYear * step) / 4));
+    }
+    $("yearAxis").innerHTML = labels.map(function (value) {
+      return "<span>" + value + "</span>";
+    }).join("");
   }
 
   function setPeriod(value) {

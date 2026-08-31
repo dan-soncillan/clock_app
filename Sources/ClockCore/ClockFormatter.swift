@@ -63,8 +63,12 @@ public struct ClockFormatter: Sendable {
     }
 
     /// タイムゾーン行。例: `TOKYO · JST · UTC+09:00`
+    ///
+    /// 短縮名を持たないタイムゾーンでは中央を落として
+    /// `KOLKATA · UTC+05:30` のように 2 要素で出す。
     public func timeZoneText(for date: Date) -> String {
         [cityText, abbreviationText(for: date), utcOffsetText(for: date)]
+            .compactMap { $0 }
             .joined(separator: " · ")
     }
 
@@ -77,14 +81,15 @@ public struct ClockFormatter: Sendable {
 
     /// 略称。例: `JST`
     ///
-    /// `TimeZone.abbreviation()` は環境によって `GMT+9` を返すことがあるため、
-    /// 表示用には DateFormatter の `zzz` から取る。
-    private func abbreviationText(for date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = timeZone
-        formatter.dateFormat = "zzz"
-        return formatter.string(from: date)
+    /// 短縮名が定義されていないタイムゾーンでは `GMT+9` のようなオフセット表記が
+    /// 返る。それは 3 つ目の要素と重複するので、その場合は nil を返して落とす。
+    private func abbreviationText(for date: Date) -> String? {
+        let style: NSTimeZone.NameStyle = timeZone.isDaylightSavingTime(for: date)
+            ? .shortDaylightSaving
+            : .shortStandard
+        guard let name = timeZone.localizedName(for: style, locale: locale) else { return nil }
+        guard !name.hasPrefix("GMT"), !name.hasPrefix("UTC") else { return nil }
+        return name
     }
 
     /// UTC からのオフセット。例: `UTC+09:00`

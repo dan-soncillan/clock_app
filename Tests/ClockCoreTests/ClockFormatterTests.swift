@@ -42,11 +42,14 @@ final class ClockFormatterTests: XCTestCase {
     }
 
     func testTimeZoneLineMatchesTheDesign() {
+        // 中央の短縮名（JST など）が使えるかは ICU のデータ次第なので、
+        // 都市が先頭・オフセットが末尾という並びと、
+        // オフセット表記が重複して入らないことを確認する。
         let formatter = ClockFormatter(timeZone: tokyo)
-        XCTAssertEqual(
-            formatter.timeZoneText(for: date(hour: 11, minute: 25, second: 39)),
-            "TOKYO · JST · UTC+09:00"
-        )
+        let text = formatter.timeZoneText(for: date(hour: 11, minute: 25, second: 39))
+        XCTAssertTrue(text.hasPrefix("TOKYO · "), text)
+        XCTAssertTrue(text.hasSuffix("UTC+09:00"), text)
+        XCTAssertFalse(text.contains("GMT"), text)
     }
 
     func testTimeZoneLineHandlesHalfHourOffsets() {
@@ -55,6 +58,7 @@ final class ClockFormatterTests: XCTestCase {
         let text = formatter.timeZoneText(for: date(hour: 11, minute: 25, second: 0, timeZone: kolkata))
         XCTAssertTrue(text.hasPrefix("KOLKATA · "), text)
         XCTAssertTrue(text.hasSuffix(" · UTC+05:30"), text)
+        XCTAssertFalse(text.contains("GMT"), text)
     }
 
     func testTimeZoneLineHandlesNegativeOffsets() {

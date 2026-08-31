@@ -1,8 +1,11 @@
-<title>Analog &amp; Digital Clock</title>
+<title>Clock</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&display=swap">
 <style>
+  /* link が効かない環境でも読めるよう、読み込み経路を二重にしておく。 */
+  @import url("https://fonts.googleapis.com/css2?family=Archivo:wght@400..800&display=swap");
+
   /* デザインハンドオフ「Clock — アナログ & デジタル」の確定値。
      常時表示前提のダーク基調に振り切った単一テーマなので、
      背景も文字色もすべて明示的に塗る。 */
@@ -30,6 +33,22 @@
     --accent: #E5372C;
 
     --font: "Archivo", "Helvetica Neue", Helvetica, Arial, sans-serif;
+
+    /* デジタル時刻・秒・文字盤数字の太さ。フッターの切替で書き換える。 */
+    --weight: 700;
+  }
+
+  /* 可変フォントの wght 軸は font-weight だけでは反映されない場合があるので、
+     font-variation-settings でも同じ値を指定する。
+     代替書体に落ちたときに偽の太字で誤魔化されないよう合成も切る。 */
+  .hhmm,
+  .ss,
+  .numeral {
+    font-family: var(--font);
+    font-weight: var(--weight);
+    font-variation-settings: "wght" var(--weight);
+    font-synthesis-weight: none;
+    font-synthesis: none;
   }
 
   html, body {
@@ -52,33 +71,12 @@
     top: 50%;
     left: 50%;
     width: 980px;
-    height: 620px;
+    /* 本体 530px + フッター 46px。タイトルバーを外したぶん基準を詰めてある。 */
+    height: 576px;
     transform-origin: 50% 50%;
     display: flex;
     flex-direction: column;
     background: var(--window);
-  }
-
-  /* --- タイトルバー --- */
-
-  .titlebar {
-    height: 44px;
-    flex: none;
-    display: flex;
-    align-items: center;
-    padding: 0 14px;
-    border-bottom: 1px solid var(--border-chrome);
-    background: var(--chrome);
-  }
-
-  .titlebar h1 {
-    flex: 1;
-    margin: 0;
-    text-align: center;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    color: var(--text-tertiary);
   }
 
   /* --- 本体 --- */
@@ -381,10 +379,6 @@
 </style>
 
 <div id="stage">
-  <header class="titlebar">
-    <h1>CLOCK</h1>
-  </header>
-
   <div class="content">
     <div class="dial" id="dial" aria-hidden="true">
       <div class="hand hour" id="hour"></div>
@@ -437,7 +431,7 @@
 
   <footer class="footer">
     <div class="footer-left">
-      <span class="section-label" style="letter-spacing: 0.2em;">FONT WEIGHT</span>
+      <span class="section-label" id="fontWeightLabel" style="letter-spacing: 0.2em;">FONT WEIGHT</span>
       <div class="weights" id="weights" role="group" aria-label="フォントウェイト"></div>
     </div>
 
@@ -532,12 +526,22 @@
   });
 
   function applyWeight() {
-    var value = String(settings.weight);
-    $("hhmm").style.fontWeight = value;
-    $("ss").style.fontWeight = value;
-    numerals.forEach(function (numeral) { numeral.style.fontWeight = value; });
+    $("stage").style.setProperty("--weight", String(settings.weight));
     weightButtons.forEach(function (entry) {
       entry.element.setAttribute("aria-pressed", String(entry.weight === settings.weight));
+    });
+  }
+
+  /* Archivo が実際に使われているかを「FONT WEIGHT」のツールチップで確認できるようにする。
+     代替書体に落ちているとウェイトの差がほとんど出ないため、切り分けの手掛かりになる。 */
+  function reportFontStatus() {
+    var label = $("fontWeightLabel");
+    if (!document.fonts || !document.fonts.ready) return;
+    document.fonts.ready.then(function () {
+      var loaded = document.fonts.check('700 104px "Archivo"');
+      label.title = loaded
+        ? "Archivo（可変フォント）で表示しています。"
+        : "Archivo を読み込めなかったため代替書体で表示しています。太さの差が出ません。";
     });
   }
 
@@ -709,7 +713,7 @@
   /* ---- 拡大縮小 ---- */
 
   function fit() {
-    var scale = Math.min(window.innerWidth / 980, window.innerHeight / 620);
+    var scale = Math.min(window.innerWidth / 980, window.innerHeight / 576);
     $("stage").style.transform = "translate(-50%, -50%) scale(" + scale + ")";
   }
 
@@ -718,6 +722,7 @@
   /* ---- 起動 ---- */
 
   applyWeight();
+  reportFontStatus();
   applyFooterLabels();
   fit();
   render(new Date(), true);

@@ -32,12 +32,17 @@ SwiftUI + Swift Package Manager 製。デザインハンドオフ「Clock — �
 `web/index.html` が同じデザインの Web 実装。ブラウザで開くだけで動くので、
 署名も Gatekeeper も関係ない。
 
-- **Dock に入れて使う**: Safari で開いて **ファイル → Dock に追加**。
+- **公開 URL**: `main` への push で GitHub Pages に自動公開される
+  （`.github/workflows/pages.yml`）。URL は
+  https://dan-soncillan.github.io/clock_app/ 。
+  どの PC からでもこの URL を開くだけで使える
+- **Mac の Dock に入れる**: 公開 URL を Safari で開いて **ファイル → Dock に追加**。
   Chrome なら **︙ → キャスト、保存、共有 → ショートカットを作成**
-- **公開する**: リポジトリの **Settings → Pages** で Source を
-  **GitHub Actions** にすると、`main` への push で自動的に公開される
-  （`.github/workflows/pages.yml`）
+- **iPad / iPhone**: 公開 URL を Safari で開いて **共有 → ホーム画面に追加**。
+  マニフェストとアイコンを同梱してあるので、全画面の独立アプリとして起動する。
+  縦向きでは文字盤が上・情報が下の縦積みレイアウトに切り替わる
 - **手元で見る**: `web/index.html` をブラウザにドラッグしても動く
+  （公開時は `pages.yml` が完全な HTML 文書に包んでから配信する）
 
 ### ネイティブ版との差分
 

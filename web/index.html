@@ -91,6 +91,27 @@
     min-height: 0;
   }
 
+  /* 縦向き（iPad の縦持ちなど）は文字盤を上、パネルを下に積む。 */
+  #stage.portrait .content {
+    flex-direction: column;
+    gap: 22px;
+  }
+
+  #stage.portrait .panel {
+    width: 100%;
+  }
+
+  /* 縦向きはフッターが横幅に収まらないので、2行に折り返して中央寄せにする。 */
+  #stage.portrait .footer {
+    flex-wrap: wrap;
+    height: auto;
+    min-height: 46px;
+    justify-content: center;
+    column-gap: 28px;
+    row-gap: 10px;
+    padding: 10px 0;
+  }
+
   /* --- 文字盤 --- */
 
   .dial {
@@ -982,9 +1003,15 @@
     var availableWidth = Math.max(window.innerWidth - MARGIN * 2, 1);
     var availableHeight = Math.max(window.innerHeight - MARGIN * 2, 1);
 
+    /* 縦向きの画面では文字盤を上、パネルを下に積んだ基準キャンバスに切り替える。 */
+    var portrait = availableHeight > availableWidth;
+    var baseWidth = portrait ? 560 : 980;
+    var baseHeight = portrait ? 1150 : 576;
+    $("stage").classList.toggle("portrait", portrait);
+
     /* 文字盤の目盛りや針は 512px 前提の絶対値で組んであるので、
        比率は変えずに拡大率だけを決める。 */
-    var scale = Math.min(availableWidth / 980, availableHeight / 576);
+    var scale = Math.min(availableWidth / baseWidth, availableHeight / baseHeight);
 
     /* 余った側はステージ自体を広げて埋める。増えたぶんは flex で
        デジタルカラム（横）と本体（縦）が受け取る。 */

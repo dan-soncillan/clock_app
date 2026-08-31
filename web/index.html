@@ -159,9 +159,24 @@
     flex-direction: column;
     gap: 18px;
     min-width: 0;
+    /* 縦をいっぱいに使う。余った高さは残量セクションが受け取る。 */
+    align-self: stretch;
   }
 
   .block {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  /* 残量セクションは残りの高さを全部使い、グループ間に余白を均等配分する。 */
+  .remainders {
+    flex: 1;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .group {
     display: flex;
     flex-direction: column;
     gap: 12px;
@@ -322,16 +337,26 @@
     justify-content: space-between;
     align-items: flex-start;
     gap: 16px;
+    /* ラベルは折り返さない。窮屈なときは数字の行ごと下に落とす。 */
+    flex-wrap: wrap;
+  }
+
+  .big-line .section-label {
+    white-space: nowrap;
+    /* 大きな数字と上端がそろって見えるよう少し下げる。 */
+    padding-top: 6px;
   }
 
   .big-row {
     display: flex;
     align-items: baseline;
     gap: 26px;
+    /* 折り返して単独行になっても右寄せを保つ。 */
+    margin-left: auto;
   }
 
   .big-row b {
-    font-size: 40px;
+    font-size: 60px;
     font-weight: 600;
     line-height: 0.9;
     color: var(--text-primary);
@@ -487,46 +512,54 @@
       <!-- 区切り線はここ 1 本だけ。時計のセクションと残量のセクションを分ける。 -->
       <div class="rule"></div>
 
-      <section class="block">
-        <div class="big-line">
-          <span class="section-label">REMAINING TODAY</span>
-          <div class="big-row">
-            <b id="remainToday">00:00</b>
-            <b id="todayPercent">0%</b>
+      <section class="block remainders">
+        <div class="group">
+          <div class="big-line">
+            <span class="section-label">REMAINING TODAY</span>
+            <div class="big-row">
+              <b id="remainToday">00:00</b>
+              <b id="todayPercent">0%</b>
+            </div>
           </div>
+          <div class="bar"><span id="dayBar"></span></div>
+          <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
         </div>
-        <div class="bar"><span id="dayBar"></span></div>
-        <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
 
-        <div class="label-row">
-          <span class="section-label">REMAINING IN MONTH</span>
-          <span class="label-group">
-            <span class="label-value" id="remainMonth">0D 00:00</span>
-            <span class="label-value" id="monthPercent">0%</span>
-          </span>
+        <div class="group">
+          <div class="label-row">
+            <span class="section-label">REMAINING IN MONTH</span>
+            <span class="label-group">
+              <span class="label-value" id="remainMonth">0D</span>
+              <span class="label-value" id="monthPercent">0%</span>
+            </span>
+          </div>
+          <div class="bar"><span id="monthBar"></span></div>
+          <div class="axis" id="monthAxis"></div>
         </div>
-        <div class="bar"><span id="monthBar"></span></div>
-        <div class="axis" id="monthAxis"></div>
 
-        <div class="label-row">
-          <span class="section-label">REMAINING IN YEAR</span>
-          <span class="label-group">
-            <span class="label-value" id="remainYear">0W 0D</span>
-            <span class="label-value" id="yearPercent">0%</span>
-          </span>
+        <div class="group">
+          <div class="label-row">
+            <span class="section-label">REMAINING IN YEAR</span>
+            <span class="label-group">
+              <span class="label-value" id="remainYear">0W 0D</span>
+              <span class="label-value" id="yearPercent">0%</span>
+            </span>
+          </div>
+          <div class="bar"><span id="yearBar"></span></div>
+          <div class="axis" id="yearAxis"></div>
         </div>
-        <div class="bar"><span id="yearBar"></span></div>
-        <div class="axis" id="yearAxis"></div>
 
-        <div class="label-row">
-          <span class="section-label" id="lifeLabel">REMAINING TO AGE 80</span>
-          <span class="label-group">
-            <span class="label-value" id="remainLife">0Y 0D</span>
-            <span class="label-value" id="lifePercent">0%</span>
-          </span>
+        <div class="group">
+          <div class="label-row">
+            <span class="section-label" id="lifeLabel">REMAINING TO AGE 80</span>
+            <span class="label-group">
+              <span class="label-value" id="remainLife">0Y 0D</span>
+              <span class="label-value" id="lifePercent">0%</span>
+            </span>
+          </div>
+          <div class="bar"><span id="lifeBar"></span></div>
+          <div class="axis" id="lifeAxis"></div>
         </div>
-        <div class="bar"><span id="lifeBar"></span></div>
-        <div class="axis" id="lifeAxis"></div>
       </section>
     </div>
   </div>

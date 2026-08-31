@@ -103,32 +103,50 @@ struct DigitalPanelView: View {
 
     // MARK: - 残量のセクション
 
+    /// 残量セクション。残りの高さを全部使い、グループ間に余白を均等配分する。
     private var remaindersBlock: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // 今日だけ大きな数字で。ラベルと同じ行に置き、上端をそろえる。
-            HStack(alignment: .top, spacing: 16) {
-                sectionLabel("REMAINING TODAY")
-                Spacer(minLength: 0)
-                HStack(alignment: .firstTextBaseline, spacing: 26) {
-                    bigValue(progress.remainingTodayText)
-                    bigValue(percentText(progress.dayRemainingFraction))
+            VStack(alignment: .leading, spacing: 12) {
+                // 今日だけ大きな数字で。ラベルと同じ行に置き、上端をそろえる。
+                HStack(alignment: .top, spacing: 16) {
+                    sectionLabel("REMAINING TODAY")
+                        .padding(.top, 6)
+                        .fixedSize()
+                    Spacer(minLength: 0)
+                    HStack(alignment: .firstTextBaseline, spacing: 26) {
+                        bigValue(progress.remainingTodayText)
+                        bigValue(percentText(progress.dayRemainingFraction))
+                    }
                 }
+                RemainingBar(fraction: progress.dayRemainingFraction, accent: accent)
+                AxisLabels(labels: ["24", "18", "12", "06", "0"])
             }
-            RemainingBar(fraction: progress.dayRemainingFraction, accent: accent)
-            AxisLabels(labels: ["24", "18", "12", "06", "0"])
 
-            compactRow("REMAINING IN MONTH", progress.remainingMonthText, progress.monthRemainingFraction)
-            RemainingBar(fraction: progress.monthRemainingFraction, accent: accent)
-            AxisLabels(labels: progress.monthAxisMilestones.map(String.init))
+            Spacer(minLength: 0)
 
-            compactRow("REMAINING IN YEAR", progress.remainingYearText, progress.yearRemainingFraction)
-            RemainingBar(fraction: progress.yearRemainingFraction, accent: accent)
-            AxisLabels(labels: progress.yearAxisMilestones.map(String.init))
+            VStack(alignment: .leading, spacing: 12) {
+                compactRow("REMAINING IN MONTH", progress.remainingMonthText, progress.monthRemainingFraction)
+                RemainingBar(fraction: progress.monthRemainingFraction, accent: accent)
+                AxisLabels(labels: progress.monthAxisMilestones.map(String.init))
+            }
 
-            compactRow("REMAINING TO AGE \(life.targetAge)", life.remainingText, life.remainingFraction)
-            RemainingBar(fraction: life.remainingFraction, accent: accent)
-            AxisLabels(labels: life.axisMilestones.map(String.init))
+            Spacer(minLength: 0)
+
+            VStack(alignment: .leading, spacing: 12) {
+                compactRow("REMAINING IN YEAR", progress.remainingYearText, progress.yearRemainingFraction)
+                RemainingBar(fraction: progress.yearRemainingFraction, accent: accent)
+                AxisLabels(labels: progress.yearAxisMilestones.map(String.init))
+            }
+
+            Spacer(minLength: 0)
+
+            VStack(alignment: .leading, spacing: 12) {
+                compactRow("REMAINING TO AGE \(life.targetAge)", life.remainingText, life.remainingFraction)
+                RemainingBar(fraction: life.remainingFraction, accent: accent)
+                AxisLabels(labels: life.axisMilestones.map(String.init))
+            }
         }
+        .frame(maxHeight: .infinity)
     }
 
     private func compactRow(_ label: String, _ value: String, _ fraction: Double) -> some View {
@@ -147,10 +165,14 @@ struct DigitalPanelView: View {
 
     private func bigValue(_ text: String) -> some View {
         Text(text)
-            .font(AppFont.archivo(size: 40, weight: 600))
+            .font(AppFont.archivo(size: 60, weight: 600))
             .monospacedDigit()
             .foregroundStyle(Theme.textPrimary)
-            .lineHeight(0.9, size: 40)
+            // ネイティブ版のカラムは Web より少し狭いので、
+            // 入り切らないときは truncation ではなく縮小で収める。
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .lineHeight(0.9, size: 60)
     }
 
     private func percentText(_ fraction: Double) -> String {

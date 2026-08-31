@@ -94,6 +94,9 @@
 
   .dial {
     position: relative;
+    /* 目盛りの土台は正方形を回転させたものなので、当たり判定が円の外まで
+       張り出してフッターのボタンを覆ってしまう。表示専用なので無効化する。 */
+    pointer-events: none;
     width: 512px;
     height: 512px;
     flex: none;
@@ -296,8 +299,6 @@
     align-items: center;
     justify-content: space-between;
     padding: 0 22px;
-    border-top: 1px solid var(--border-chrome);
-    background: var(--chrome);
     font-size: 11px;
     font-weight: 500;
     letter-spacing: 0.12em;

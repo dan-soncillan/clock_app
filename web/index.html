@@ -451,9 +451,36 @@
     border: 1px solid var(--border-strong);
     background: var(--window);
     color: var(--text-primary);
+    width: 100%;
+    box-sizing: border-box;
   }
 
   .modal-input[data-invalid="true"] { border-color: var(--accent); }
+
+  /* 入力欄に「____-__-__」の残り部分を重ねて表示する。
+     入力済みの文字列を不可視のまま先頭に置くことで、字幅の計算を
+     ブラウザに任せて残りのテンプレートの開始位置を正確にそろえる。 */
+  .mask-wrap {
+    position: relative;
+    display: block;
+  }
+
+  .mask-ghost {
+    position: absolute;
+    inset: 0;
+    padding: 10px 12px;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+    font-size: 20px;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.06em;
+    white-space: pre;
+    overflow: hidden;
+    pointer-events: none;
+    color: var(--text-axis);
+  }
+
+  .mask-ghost .filled { visibility: hidden; }
 
   .modal-error {
     margin: 0;
@@ -592,6 +619,13 @@
 
   #sync[data-ok="true"] { color: var(--accent); }
 
+  /* アイコンだけのボタン。文字ボタンと高さの中心をそろえる。 */
+  .icon-button {
+    display: flex;
+    align-items: center;
+    padding: 0;
+  }
+
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
@@ -707,19 +741,28 @@
       <button type="button" id="hourFormat" title="24時間表記と12時間表記を切り替えます">24H</button>
       <button type="button" id="seconds" title="秒針とデジタル秒の表示を切り替えます">SEC</button>
       <button type="button" id="sweep" title="秒針の運針を切り替えます">SWEEP</button>
-      <button type="button" id="fullscreen" title="フルスクリーン表示を切り替えます">FULL</button>
       <button type="button" id="sync" data-ok="false" title="時刻のずれを確認します">SYNC —</button>
+      <button type="button" id="fullscreen" class="icon-button"
+              title="フルスクリーン表示を切り替えます" aria-label="フルスクリーン">
+        <svg width="14" height="14" viewBox="0 0 18 18" fill="none" stroke="currentColor"
+             stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path id="fullscreenIcon" d="M2 6V2h4 M12 2h4v4 M16 12v4h-4 M6 16H2v-4"/>
+        </svg>
+      </button>
     </div>
   </footer>
 
   <div class="modal-scrim" id="birthModal" hidden>
     <form class="modal" id="birthForm">
       <span class="section-label">BIRTH DATE</span>
-      <p class="modal-note">生年月日を入力すると REMAINING TO AGE 80 を計算します。入力した日付はこの端末（ブラウザ）にだけ保存され、どこにも送信されません。</p>
-      <input class="modal-input" id="birthInput" placeholder="YYYY-MM-DD"
-             inputmode="numeric" autocomplete="off" spellcheck="false"
-             aria-label="生年月日（YYYY-MM-DD）">
-      <p class="modal-error" id="birthError" hidden>YYYY-MM-DD の形式で入力してください（例: 1990-01-23）。</p>
+      <p class="modal-note">生年月日を入力すると REMAINING TO AGE 80 を計算します。数字だけ続けて打てば区切りは自動で入ります。入力した日付はこの端末（ブラウザ）にだけ保存され、どこにも送信されません。</p>
+      <span class="mask-wrap">
+        <input class="modal-input" id="birthInput"
+               inputmode="numeric" autocomplete="off" spellcheck="false"
+               aria-label="生年月日（数字8桁 YYYYMMDD）">
+        <span class="mask-ghost" aria-hidden="true"><span class="filled" id="ghostFill"></span><span id="ghostRest">____-__-__</span></span>
+      </span>
+      <p class="modal-error" id="birthError" hidden>年・月・日の数字8桁で入力してください（例: 19900123 → 1990-01-23）。</p>
       <div class="modal-actions">
         <button type="button" id="birthClear">CLEAR</button>
         <span class="spacer"></span>
@@ -1148,8 +1191,52 @@
   var birthInput = $("birthInput");
   var birthError = $("birthError");
 
+  /* 入力マスク。数字だけを受け取り、4桁・6桁の後ろに区切りを自動で足す。
+     区切りは「次の数字があるとき」だけ足す — こうするとバックスペースで
+     区切りと直前の数字が一度に消え、素直に打ち直せる。 */
+  var MASK_TEMPLATE = "____-__-__";
+
+  function formatBirth(digits) {
+    var formatted = digits.slice(0, 4);
+    if (digits.length > 4) formatted += "-" + digits.slice(4, 6);
+    if (digits.length > 6) formatted += "-" + digits.slice(6, 8);
+    return formatted;
+  }
+
+  function updateGhost() {
+    $("ghostFill").textContent = birthInput.value;
+    $("ghostRest").textContent = MASK_TEMPLATE.slice(birthInput.value.length);
+  }
+
+  birthInput.addEventListener("input", function () {
+    /* 貼り付けや途中編集にも耐えるよう、カーソル位置は
+       「その手前にある数字の個数」で数え直して復元する。 */
+    var caretDigits = birthInput.value
+      .slice(0, birthInput.selectionStart)
+      .replace(/\D/g, "").length;
+
+    var digits = birthInput.value.replace(/\D/g, "").slice(0, 8);
+    birthInput.value = formatBirth(digits);
+
+    var pos = 0;
+    var seen = 0;
+    while (pos < birthInput.value.length && seen < caretDigits) {
+      if (/\d/.test(birthInput.value.charAt(pos))) seen += 1;
+      pos += 1;
+    }
+    birthInput.setSelectionRange(pos, pos);
+
+    updateGhost();
+    hideBirthError();
+  });
+
   function openBirthModal() {
-    birthInput.value = settings.birth;
+    /* 保存済みの値は正規化してから出す（古い形式 1990-1-23 でも崩れないように）。 */
+    var saved = parseBirth(settings.birth);
+    birthInput.value = saved
+      ? saved.year + "-" + pad(saved.month) + "-" + pad(saved.day)
+      : "";
+    updateGhost();
     hideBirthError();
     birthModal.hidden = false;
     birthInput.focus();
@@ -1166,7 +1253,6 @@
 
   $("lifeEdit").addEventListener("click", openBirthModal);
   $("birthCancel").addEventListener("click", closeBirthModal);
-  birthInput.addEventListener("input", hideBirthError);
 
   $("birthClear").addEventListener("click", function () {
     settings.birth = "";
@@ -1187,7 +1273,8 @@
   $("birthForm").addEventListener("submit", function (event) {
     event.preventDefault();
     var value = birthInput.value.trim();
-    if (!parseBirth(value)) {
+    /* 途中まで（数字8桁未満）の入力は月・日の読み違えになるので受け付けない。 */
+    if (value.replace(/\D/g, "").length !== 8 || !parseBirth(value)) {
       birthError.hidden = false;
       birthInput.dataset.invalid = "true";
       birthInput.focus();
@@ -1235,8 +1322,14 @@
     }
   });
 
+  /* 展開（四隅が外向き）と縮小（四隅が内向き）のアイコンを切り替える。 */
+  var ICON_ENTER = "M2 6V2h4 M12 2h4v4 M16 12v4h-4 M6 16H2v-4";
+  var ICON_EXIT = "M6 2v4H2 M16 6h-4V2 M12 16v-4h4 M2 12h4v4";
+
   function applyFullscreenLabel() {
-    fullscreenButton.textContent = fullscreenElement() ? "EXIT FULL" : "FULL";
+    var active = !!fullscreenElement();
+    $("fullscreenIcon").setAttribute("d", active ? ICON_EXIT : ICON_ENTER);
+    fullscreenButton.setAttribute("aria-label", active ? "フルスクリーンを解除" : "フルスクリーン");
   }
 
   document.addEventListener("fullscreenchange", applyFullscreenLabel);

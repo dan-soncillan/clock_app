@@ -303,21 +303,52 @@
     color: var(--text-axis);
   }
 
-  /* --- 鳴動中のオーバーレイ --- */
+  /* --- 鳴動中のオーバーレイ ---
+     気づくまで止まらない。画面全体をアクセント色で強く明滅させて、
+     視界の隅からでも「鳴っている」ことが分かるようにする。 */
 
-  .ring .modal { align-items: center; }
+  .ring .modal {
+    position: relative;
+    z-index: 1;
+    align-items: center;
+    border-color: var(--accent);
+  }
 
   .ring-time {
     font-size: 72px;
     line-height: 1;
   }
 
-  @keyframes ringPulse {
-    0%, 100% { background: rgba(8, 9, 10, 0.6); }
-    50% { background: rgba(229, 55, 44, 0.28); }
+  .ring-flash {
+    position: absolute;
+    inset: 0;
+    background: var(--accent);
+    opacity: 0;
+    pointer-events: none;
   }
 
-  .modal-scrim.ring:not([hidden]) { animation: ringPulse 1s ease-in-out infinite; }
+  /* 44%→50% の急な変化で、なめらかな明滅ではなく「点滅」にする。 */
+  @keyframes ringBlink {
+    0%, 44% { opacity: 0.75; }
+    50%, 94% { opacity: 0; }
+    100% { opacity: 0.75; }
+  }
+
+  .modal-scrim.ring:not([hidden]) .ring-flash {
+    animation: ringBlink 0.9s linear infinite;
+  }
+
+  /* 動きを減らす設定の環境では、点滅ではなく穏やかな明滅に落とす。 */
+  @keyframes ringGlow {
+    0%, 100% { opacity: 0.1; }
+    50% { opacity: 0.4; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .modal-scrim.ring:not([hidden]) .ring-flash {
+      animation: ringGlow 2.4s ease-in-out infinite;
+    }
+  }
 
   /* 縦向き（iPad の縦持ちなど）は文字盤を上、パネルを下に積む。 */
   #stage.portrait .content {
@@ -1092,6 +1123,7 @@
   </div>
 
   <div class="modal-scrim ring" id="ringScrim" hidden>
+    <div class="ring-flash" aria-hidden="true"></div>
     <div class="modal ring-panel" role="alertdialog" aria-label="時間になりました">
       <span class="section-label" id="ringLabel">TIMER</span>
       <div class="hhmm ring-time" id="ringTime">00:00</div>
@@ -1833,25 +1865,30 @@
   /* ---- 鳴動中のオーバーレイ ---- */
 
   var ringInterval = 0;
-  var ringTimeout = 0;
+  var ringFlip = false;
+  var ringTitle = "";
+
+  /* STOP か ESC で止めるまで、音・画面の点滅・タブタイトルの点滅を続ける。
+     自動では止めない — 気づいてもらうためのものなので。 */
+  function ringPulse() {
+    beep();
+    ringFlip = !ringFlip;
+    document.title = ringFlip ? "⏰⏰⏰" : "⏰ " + ringTitle;
+  }
 
   function startRing(label, timeText) {
     write("ringLabel", label);
     write("ringTime", timeText);
     $("ringScrim").hidden = false;
-    document.title = "⏰ " + label + " " + timeText;
+    ringTitle = label + " " + timeText;
     ensureAudio();
     clearInterval(ringInterval);
-    clearTimeout(ringTimeout);
-    beep();
-    ringInterval = setInterval(beep, 700);
-    /* 止め忘れても2分で自動停止する。 */
-    ringTimeout = setTimeout(stopRing, 2 * 60 * 1000);
+    ringPulse();
+    ringInterval = setInterval(ringPulse, 700);
   }
 
   function stopRing() {
     clearInterval(ringInterval);
-    clearTimeout(ringTimeout);
     ringInterval = 0;
     $("ringScrim").hidden = true;
     document.title = "Clock";

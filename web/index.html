@@ -243,6 +243,16 @@
     margin-top: 4px;
   }
 
+  /* ポモドーロの上に出す現在時刻。太さはウェイト設定に従う。 */
+  .pomo-clock {
+    font-size: 32px;
+    font-weight: var(--weight);
+    font-variation-settings: "wght" var(--weight);
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+    color: var(--text-secondary);
+  }
+
   /* --- アラーム --- */
 
   .alarm-inner { width: 460px; }
@@ -265,13 +275,18 @@
     background: var(--segment-track);
   }
 
-  /* 太さはフッターのウェイト設定（--weight）に従う。 */
+  /* 太さはフッターのウェイト設定（--weight）に従う。
+     時刻はボタンで、クリックすると編集ダイアログが開く。 */
   .alarm-row .alarm-time {
     flex: 1;
+    padding: 0;
+    text-align: left;
     font-size: 30px;
     font-variant-numeric: tabular-nums;
     color: var(--text-primary);
   }
+
+  .alarm-row .alarm-time:hover { color: var(--accent); }
 
   .alarm-row[data-on="false"] .alarm-time { color: var(--text-axis); }
 
@@ -307,12 +322,13 @@
      気づくまで止まらない。画面全体をアクセント色で強く明滅させて、
      視界の隅からでも「鳴っている」ことが分かるようにする。 */
 
-  /* 枠線は白。明フェーズで周囲の白い光に溶け込む。 */
+  /* 枠線は付けず、影だけで浮かせる。明フェーズの白い光に自然に溶け込む。 */
   .ring .modal {
     position: relative;
     z-index: 1;
     align-items: center;
-    border-color: var(--text-primary);
+    border-color: transparent;
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6);
   }
 
   .ring-time {
@@ -1025,6 +1041,7 @@
 
   <div class="view" id="viewPomo" hidden>
     <div class="view-inner">
+      <span class="pomo-clock" id="pomoClock">00:00</span>
       <span class="section-label" id="pomoPhase">FOCUS · ROUND 1 OF 4</span>
       <div class="hhmm timer-display" id="pomoDisplay">25:00</div>
       <div class="bar timer-bar"><span id="pomoBar"></span></div>
@@ -1108,7 +1125,7 @@
 
   <div class="modal-scrim" id="alarmModal" hidden>
     <form class="modal" id="alarmForm">
-      <span class="section-label">NEW ALARM</span>
+      <span class="section-label" id="alarmModalTitle">NEW ALARM</span>
       <p class="modal-note">時刻を24時間表記の数字4桁（HHMM）で入力してください。有効にしているあいだ、毎日この時刻に鳴ります。</p>
       <span class="mask-wrap">
         <input class="modal-input" id="alarmInput"
@@ -1442,10 +1459,12 @@
     write("todayPercent", percentText(remainingMinutes / 1440));
     setBar("dayBar", remainingMinutes / 1440);
 
-    /* ポモドーロのタブにも同じ「今日の残り」を出す。 */
+    /* ポモドーロのタブにも同じ「今日の残り」と現在時刻を出す。 */
     write("pomoToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
     write("pomoTodayPercent", percentText(remainingMinutes / 1440));
     setBar("pomoDayBar", remainingMinutes / 1440);
+    write("pomoClock", pad(shown) + ":" + pad(minutes) +
+      (settings.use24h ? "" : (hours < 12 ? " AM" : " PM")));
 
     /* 今月の残り。 */
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -2336,9 +2355,15 @@
       row.className = "alarm-row";
       row.dataset.on = String(alarm.on);
 
-      var time = document.createElement("span");
+      /* 時刻そのものをボタンにして、タップ / クリックで編集できるようにする。 */
+      var time = document.createElement("button");
+      time.type = "button";
       time.className = "alarm-time";
       time.textContent = alarmDisplayTime(alarm.time);
+      time.title = "クリックで時刻を編集します";
+      time.addEventListener("click", function () {
+        openAlarmModal(index);
+      });
       row.appendChild(time);
 
       var toggle = document.createElement("button");
@@ -2371,9 +2396,14 @@
     });
   }
 
-  function openAlarmModal() {
+  /* null なら新規、番号なら settings.alarms のその項目を編集する。 */
+  var alarmEditIndex = null;
+
+  function openAlarmModal(editIndex) {
     ensureAudio();
-    alarmInput.value = "";
+    alarmEditIndex = typeof editIndex === "number" ? editIndex : null;
+    alarmInput.value = alarmEditIndex === null ? "" : settings.alarms[alarmEditIndex].time;
+    write("alarmModalTitle", alarmEditIndex === null ? "NEW ALARM" : "EDIT ALARM");
     alarmMask.refresh();
     hideAlarmError();
     alarmModal.hidden = false;
@@ -2401,13 +2431,28 @@
       alarmInput.focus();
       return;
     }
-    var existing = settings.alarms.filter(function (alarm) { return alarm.time === value; })[0];
-    if (existing) {
-      existing.on = true;
+    if (alarmEditIndex !== null) {
+      /* 既存アラームの時刻変更。同じ時刻が既にあれば1つにまとめる。 */
+      var editing = settings.alarms[alarmEditIndex];
+      var duplicate = settings.alarms.filter(function (alarm, i) {
+        return i !== alarmEditIndex && alarm.time === value;
+      })[0];
+      if (duplicate) {
+        duplicate.on = duplicate.on || editing.on;
+        settings.alarms.splice(alarmEditIndex, 1);
+      } else {
+        editing.time = value;
+        editing.lastFired = "";
+      }
     } else {
-      settings.alarms.push({ time: value, on: true, lastFired: "" });
-      settings.alarms.sort(function (a, b) { return a.time < b.time ? -1 : 1; });
+      var existing = settings.alarms.filter(function (alarm) { return alarm.time === value; })[0];
+      if (existing) {
+        existing.on = true;
+      } else {
+        settings.alarms.push({ time: value, on: true, lastFired: "" });
+      }
     }
+    settings.alarms.sort(function (a, b) { return a.time < b.time ? -1 : 1; });
     requestNotifyPermission();
     persist();
     renderAlarms();

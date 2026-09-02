@@ -1739,6 +1739,9 @@
       settings.tab = button.dataset.tab;
       persist();
       applyTab();
+      /* タブボタンにフォーカスが残ると Enter がタブの再クリックになる。
+         外しておけば、タイマーではそのまま数字と Enter が入力になる。 */
+      button.blur();
     });
   });
 
@@ -1916,13 +1919,25 @@
     }
   );
 
-  /* タイマーのタブを開いているあいだは、物理キーボードでもそのまま打てる。 */
+  /* タイマーのタブを開いているあいだは、物理キーボードでもそのまま打てる。
+     日本語入力（IME）が ON だと 1 打で keydown が 2 回来ることがある
+     （1 回目は keyCode 229 の合成イベント）ので、それは無視する。
+     念のため、同じ数字がありえない速さで連続した場合も 1 回に丸める。 */
+  var lastTimerKeyAt = 0;
+  var lastTimerKeyDigit = "";
+
   document.addEventListener("keydown", function (event) {
     if (settings.tab !== "timer") return;
+    if (event.isComposing || event.keyCode === 229 || event.repeat) return;
     if (!birthModal.hidden || !alarmModal.hidden || !$("ringScrim").hidden) return;
     var target = event.target;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
     if (/^\d$/.test(event.key)) {
+      var now = Date.now();
+      /* 人間には出せない速さ（25ms未満）の同じ数字だけを重複と見なす。 */
+      if (event.key === lastTimerKeyDigit && now - lastTimerKeyAt < 25) return;
+      lastTimerKeyDigit = event.key;
+      lastTimerKeyAt = now;
       timerKey(event.key);
       event.preventDefault();
     } else if (event.key === "Backspace") {

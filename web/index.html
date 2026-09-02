@@ -322,7 +322,9 @@
   .ring-flash {
     position: absolute;
     inset: 0;
-    background: var(--accent);
+    /* 赤は暗い背景と輝度差が小さく視界の隅では気づきにくい。
+       白と黒の交互で明度のコントラストを最大にする。 */
+    background: #ffffff;
     opacity: 0;
     pointer-events: none;
   }

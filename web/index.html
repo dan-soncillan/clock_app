@@ -279,18 +279,13 @@
     background: var(--segment-track);
   }
 
-  /* 太さはフッターのウェイト設定（--weight）に従う。
-     時刻はボタンで、クリックすると編集ダイアログが開く。 */
+  /* 太さはフッターのウェイト設定（--weight）に従う。 */
   .alarm-row .alarm-time {
-    flex: 1;
-    padding: 0;
-    text-align: left;
     font-size: 30px;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
     color: var(--text-primary);
   }
-
-  .alarm-row .alarm-time:hover { color: var(--accent); }
 
   .alarm-row[data-on="false"] .alarm-time { color: var(--text-axis); }
 
@@ -305,6 +300,62 @@
   .alarm-row button:hover { color: var(--text-primary); }
 
   .alarm-row .toggle[aria-pressed="true"] { color: var(--accent); }
+
+  /* 曜日の選択（アラームのダイアログ）。 */
+  .days {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
+  }
+
+  .days button {
+    flex: 1;
+    padding: 8px 0;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    background: var(--segment-track);
+    color: var(--text-tertiary);
+  }
+
+  .days button:hover { background: var(--segment-hover); }
+
+  .days button[aria-pressed="true"] {
+    background: var(--accent);
+    color: var(--text-primary);
+  }
+
+  .days-hint {
+    margin: -4px 0 0;
+    font-size: 11px;
+    line-height: 1.6;
+    color: var(--text-axis);
+  }
+
+  /* 一覧に出す繰り返しの説明。 */
+  .alarm-days {
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--text-label);
+  }
+
+  .alarm-row[data-on="false"] .alarm-days { color: var(--text-axis); }
+
+  /* 時刻と曜日をまとめた領域そのものがボタン。押すと編集ダイアログが開く。 */
+  .alarm-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+    padding: 0;
+    text-align: left;
+  }
+
+  .alarm-main:hover .alarm-time { color: var(--accent); }
 
   .alarm-empty {
     padding: 18px 0;
@@ -1122,7 +1173,7 @@
   <div class="modal-scrim" id="alarmModal" hidden>
     <form class="modal" id="alarmForm">
       <span class="section-label" id="alarmModalTitle">NEW ALARM</span>
-      <p class="modal-note">時刻を24時間表記の数字4桁（HHMM）で入力してください。有効にしているあいだ、毎日この時刻に鳴ります。</p>
+      <p class="modal-note">時刻を24時間表記の数字4桁（HHMM）で入力し、繰り返す曜日を選んでください。</p>
       <span class="mask-wrap">
         <input class="modal-input" id="alarmInput"
                inputmode="numeric" autocomplete="off" spellcheck="false"
@@ -1130,6 +1181,8 @@
         <span class="mask-ghost" aria-hidden="true"><span class="filled" id="alarmGhostFill"></span><span id="alarmGhostRest">__:__</span></span>
       </span>
       <p class="modal-error" id="alarmError" hidden>00:00〜23:59 の範囲で、数字4桁で入力してください（例: 0730 → 07:30）。</p>
+      <div class="days" id="alarmDays" role="group" aria-label="繰り返す曜日"></div>
+      <p class="days-hint" id="alarmDaysHint">曜日を選ばなければ1回だけ鳴り、そのあと自動で OFF になります。</p>
       <div class="modal-actions">
         <span class="spacer"></span>
         <button type="button" id="alarmCancel">CANCEL</button>
@@ -1213,9 +1266,14 @@
   settings.alarms = settings.alarms.filter(function (alarm) {
     return alarm && /^([01]\d|2[0-3]):[0-5]\d$/.test(alarm.time);
   }).map(function (alarm) {
+    /* days は 0（日）〜6（土）の配列。空 = 曜日を指定しない 1 回だけのアラーム。 */
+    var days = Array.isArray(alarm.days)
+      ? alarm.days.filter(function (day) { return day === 0 || (day > 0 && day < 7 && day % 1 === 0); })
+      : [];
     return {
       time: alarm.time,
       on: alarm.on !== false,
+      days: days.sort(),
       lastFired: typeof alarm.lastFired === "string" ? alarm.lastFired : ""
     };
   });
@@ -2324,6 +2382,54 @@
     alarmInput, "alarmGhostFill", "alarmGhostRest", [2, 2], ":", "__:__", hideAlarmError
   );
 
+  /* ---- 曜日の選択 ---- */
+
+  var DAY_LABELS = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  var WEEKDAYS = [1, 2, 3, 4, 5];
+  var WEEKEND = [0, 6];
+
+  /* ダイアログで編集中の曜日。空 = 1回だけ。 */
+  var alarmDraftDays = [];
+
+  var dayButtons = DAY_LABELS.map(function (label, day) {
+    var button = document.createElement("button");
+    button.type = "button";
+    /* ボタンは頭文字だけ。読み上げには曜日名を渡す。 */
+    button.textContent = label.charAt(0);
+    button.setAttribute("aria-label", label);
+    button.addEventListener("click", function () {
+      var at = alarmDraftDays.indexOf(day);
+      if (at < 0) alarmDraftDays.push(day);
+      else alarmDraftDays.splice(at, 1);
+      alarmDraftDays.sort();
+      applyDayButtons();
+    });
+    $("alarmDays").appendChild(button);
+    return button;
+  });
+
+  function applyDayButtons() {
+    dayButtons.forEach(function (button, day) {
+      button.setAttribute("aria-pressed", String(alarmDraftDays.indexOf(day) >= 0));
+    });
+    $("alarmDaysHint").textContent = alarmDraftDays.length === 0
+      ? "曜日を選ばなければ1回だけ鳴り、そのあと自動で OFF になります。"
+      : "選んだ曜日に毎週繰り返します。";
+  }
+
+  function sameDays(days, other) {
+    return days.length === other.length && days.every(function (day, i) { return day === other[i]; });
+  }
+
+  /* 一覧に出す繰り返しの説明。 */
+  function daysText(days) {
+    if (days.length === 0) return "ONCE";
+    if (days.length === 7) return "EVERY DAY";
+    if (sameDays(days, WEEKDAYS)) return "WEEKDAYS";
+    if (sameDays(days, WEEKEND)) return "WEEKENDS";
+    return days.map(function (day) { return DAY_LABELS[day]; }).join(" ");
+  }
+
   /* 保存は常に24時間表記。表示だけフッターの 24H/12H 設定に合わせる。 */
   function alarmDisplayTime(time24) {
     if (settings.use24h) return time24;
@@ -2350,16 +2456,26 @@
       row.className = "alarm-row";
       row.dataset.on = String(alarm.on);
 
-      /* 時刻そのものをボタンにして、タップ / クリックで編集できるようにする。 */
-      var time = document.createElement("button");
-      time.type = "button";
-      time.className = "alarm-time";
-      time.textContent = alarmDisplayTime(alarm.time);
-      time.title = "クリックで時刻を編集します";
-      time.addEventListener("click", function () {
+      /* 時刻と曜日をまとめてボタンにして、タップ / クリックで編集できるようにする。 */
+      var main = document.createElement("button");
+      main.type = "button";
+      main.className = "alarm-main";
+      main.title = "クリックで時刻と曜日を編集します";
+      main.addEventListener("click", function () {
         openAlarmModal(index);
       });
-      row.appendChild(time);
+
+      var time = document.createElement("span");
+      time.className = "alarm-time";
+      time.textContent = alarmDisplayTime(alarm.time);
+      main.appendChild(time);
+
+      var days = document.createElement("span");
+      days.className = "alarm-days";
+      days.textContent = daysText(alarm.days);
+      main.appendChild(days);
+
+      row.appendChild(main);
 
       var toggle = document.createElement("button");
       toggle.type = "button";
@@ -2398,7 +2514,9 @@
     ensureAudio();
     alarmEditIndex = typeof editIndex === "number" ? editIndex : null;
     alarmInput.value = alarmEditIndex === null ? "" : settings.alarms[alarmEditIndex].time;
+    alarmDraftDays = alarmEditIndex === null ? [] : settings.alarms[alarmEditIndex].days.slice();
     write("alarmModalTitle", alarmEditIndex === null ? "NEW ALARM" : "EDIT ALARM");
+    applyDayButtons();
     alarmMask.refresh();
     hideAlarmError();
     alarmModal.hidden = false;
@@ -2426,27 +2544,31 @@
       alarmInput.focus();
       return;
     }
+    /* 時刻と曜日の両方が同じものだけを「同じアラーム」と見なす。
+       同じ時刻でも曜日が違えば別のアラームとして残す。 */
+    var days = alarmDraftDays.slice();
+    var twin = settings.alarms.filter(function (alarm, i) {
+      return i !== alarmEditIndex && alarm.time === value && sameDays(alarm.days, days);
+    })[0];
+
     if (alarmEditIndex !== null) {
-      /* 既存アラームの時刻変更。同じ時刻が既にあれば1つにまとめる。 */
       var editing = settings.alarms[alarmEditIndex];
-      var duplicate = settings.alarms.filter(function (alarm, i) {
-        return i !== alarmEditIndex && alarm.time === value;
-      })[0];
-      if (duplicate) {
-        duplicate.on = duplicate.on || editing.on;
+      if (twin) {
+        twin.on = twin.on || editing.on;
         settings.alarms.splice(alarmEditIndex, 1);
       } else {
         editing.time = value;
+        editing.days = days;
+        /* 条件が変わったので、同日の再発火の抑止も解除する。 */
         editing.lastFired = "";
       }
+    } else if (twin) {
+      twin.on = true;
+      twin.lastFired = "";
     } else {
-      var existing = settings.alarms.filter(function (alarm) { return alarm.time === value; })[0];
-      if (existing) {
-        existing.on = true;
-      } else {
-        settings.alarms.push({ time: value, on: true, lastFired: "" });
-      }
+      settings.alarms.push({ time: value, on: true, days: days, lastFired: "" });
     }
+
     settings.alarms.sort(function (a, b) { return a.time < b.time ? -1 : 1; });
     requestNotifyPermission();
     persist();
@@ -2473,9 +2595,17 @@
       var candidates = [fireAt, fireAt - 86400000];
       for (var i = 0; i < candidates.length; i++) {
         if (candidates[i] <= since || candidates[i] > nowMs) continue;
-        var key = alarm.time + "@" + new Date(candidates[i]).toDateString();
+        var firedOn = new Date(candidates[i]);
+        /* 曜日を指定しているなら、その曜日のときだけ鳴らす。 */
+        if (alarm.days.length > 0 && alarm.days.indexOf(firedOn.getDay()) < 0) continue;
+        var key = alarm.time + "@" + firedOn.toDateString();
         if (alarm.lastFired === key) continue;
         alarm.lastFired = key;
+        /* 曜日を指定していない = 1回だけ。鳴ったら自動で OFF にする。 */
+        if (alarm.days.length === 0) {
+          alarm.on = false;
+          renderAlarms();
+        }
         persist();
         startRing("ALARM", alarm.time);
         break;

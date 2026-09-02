@@ -1924,6 +1924,32 @@
   var ringInterval = 0;
   var ringFlip = false;
   var ringTitle = "";
+  var ringNotification = null;
+
+  /* ブラウザのタブやウィンドウが背面だと画面の点滅は見えないので、
+     許可があれば OS の通知でも知らせる。許可はアラーム登録時に求める。 */
+  function requestNotifyPermission() {
+    try {
+      if (window.Notification && Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    } catch (error) { /* 通知が使えない環境では黙って諦める。 */ }
+  }
+
+  function notifyIfHidden(label, timeText) {
+    try {
+      if (!document.hidden) return;
+      if (!window.Notification || Notification.permission !== "granted") return;
+      ringNotification = new Notification("⏰ " + label, {
+        body: timeText + " — クリックで開いて停止",
+        tag: "clock-ring",
+        requireInteraction: true
+      });
+      ringNotification.onclick = function () {
+        window.focus();
+      };
+    } catch (error) { /* 出せなければ画面とタイトルの点滅だけで知らせる。 */ }
+  }
 
   /* STOP か ESC で止めるまで、音・画面の点滅・タブタイトルの点滅を続ける。
      自動では止めない — 気づいてもらうためのものなので。 */
@@ -1939,6 +1965,7 @@
     $("ringScrim").hidden = false;
     ringTitle = label + " " + timeText;
     ensureAudio();
+    notifyIfHidden(label, timeText);
     clearInterval(ringInterval);
     ringPulse();
     ringInterval = setInterval(ringPulse, 700);
@@ -1949,6 +1976,10 @@
     ringInterval = 0;
     $("ringScrim").hidden = true;
     document.title = "Clock";
+    if (ringNotification) {
+      try { ringNotification.close(); } catch (error) { /* 閉じられなくても実害はない。 */ }
+      ringNotification = null;
+    }
   }
 
   $("ringStop").addEventListener("click", stopRing);
@@ -2319,6 +2350,7 @@
       toggle.addEventListener("click", function () {
         ensureAudio();
         alarm.on = !alarm.on;
+        if (alarm.on) requestNotifyPermission();
         persist();
         renderAlarms();
       });
@@ -2376,6 +2408,7 @@
       settings.alarms.push({ time: value, on: true, lastFired: "" });
       settings.alarms.sort(function (a, b) { return a.time < b.time ? -1 : 1; });
     }
+    requestNotifyPermission();
     persist();
     renderAlarms();
     closeAlarmModal();

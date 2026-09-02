@@ -43,7 +43,8 @@
      代替書体に落ちたときに偽の太字で誤魔化されないよう合成も切る。 */
   .hhmm,
   .ss,
-  .numeral {
+  .numeral,
+  .alarm-time {
     font-family: var(--font);
     font-weight: var(--weight);
     font-variation-settings: "wght" var(--weight);
@@ -87,6 +88,7 @@
     flex: none;
     display: flex;
     align-items: flex-end;
+    justify-content: center;
     gap: 24px;
   }
 
@@ -190,6 +192,51 @@
     color: var(--window);
   }
 
+  /* 数字キーパッド（タイマーの時間入力）。 */
+  .keypad {
+    display: grid;
+    grid-template-columns: repeat(3, 88px);
+    gap: 10px;
+  }
+
+  .keypad button {
+    padding: 11px 0;
+    border-radius: 10px;
+    font-size: 18px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    background: var(--segment-track);
+    color: var(--text-primary);
+  }
+
+  .keypad button:hover { background: var(--segment-hover); }
+
+  /* 動作中は入力を受け付けない。 */
+  .keypad[data-disabled="true"] button {
+    opacity: 0.3;
+    pointer-events: none;
+  }
+
+  /* ポモドーロのラウンド表示。済 = 塗り、現在 = 輪。 */
+  .pomo-dots {
+    display: flex;
+    gap: 12px;
+  }
+
+  .pomo-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--segment-hover);
+  }
+
+  .pomo-dot[data-state="done"] { background: var(--accent); }
+
+  .pomo-dot[data-state="current"] {
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--accent);
+  }
+
   /* --- アラーム --- */
 
   .alarm-inner { width: 460px; }
@@ -212,10 +259,10 @@
     background: var(--segment-track);
   }
 
+  /* 太さはフッターのウェイト設定（--weight）に従う。 */
   .alarm-row .alarm-time {
     flex: 1;
     font-size: 30px;
-    font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: var(--text-primary);
   }
@@ -821,6 +868,7 @@
   <nav class="tabs" role="tablist" aria-label="画面切替">
     <button type="button" data-tab="clock" aria-pressed="true">CLOCK</button>
     <button type="button" data-tab="timer" aria-pressed="false">TIMER</button>
+    <button type="button" data-tab="pomo" aria-pressed="false">POMODORO</button>
     <button type="button" data-tab="alarm" aria-pressed="false">ALARM</button>
   </nav>
 
@@ -914,18 +962,39 @@
       <span class="section-label">TIMER</span>
       <div class="hhmm timer-display" id="timerDisplay">00:00</div>
       <div class="bar timer-bar"><span id="timerBar"></span></div>
-      <div class="chips" id="timerPresets">
-        <button type="button" data-add="10">+10S</button>
-        <button type="button" data-add="60">+1M</button>
-        <button type="button" data-add="300">+5M</button>
-        <button type="button" data-add="600">+10M</button>
-        <button type="button" data-add="3600">+1H</button>
-        <button type="button" id="timerClear">CLEAR</button>
+      <div class="keypad" id="timerKeypad" aria-label="タイマーの時間入力">
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" data-key="00">00</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key="back" aria-label="1桁削除">⌫</button>
       </div>
       <div class="chips">
         <button type="button" class="primary-chip" id="timerStart">START</button>
         <button type="button" id="timerReset">RESET</button>
       </div>
+    </div>
+  </div>
+
+  <div class="view" id="viewPomo" hidden>
+    <div class="view-inner">
+      <span class="section-label" id="pomoPhase">FOCUS · ROUND 1 OF 4</span>
+      <div class="hhmm timer-display" id="pomoDisplay">25:00</div>
+      <div class="bar timer-bar"><span id="pomoBar"></span></div>
+      <div class="pomo-dots" id="pomoDots" aria-hidden="true"></div>
+      <div class="chips">
+        <button type="button" class="primary-chip" id="pomoStart">START</button>
+        <button type="button" id="pomoSkip">SKIP</button>
+        <button type="button" id="pomoReset">RESET</button>
+      </div>
+      <p class="alarm-note">25分の集中 × 4ラウンド。合間に5分、4ラウンド目の後に15分の休憩。</p>
     </div>
   </div>
 
@@ -1047,8 +1116,11 @@
     tab: "clock",
     /* {time: "07:30", on: true, lastFired: "07:30@2026-09-01"} の配列。 */
     alarms: [],
-    /* duration: 設定した長さ / remaining: 残り / endAt: 動作中の終了時刻（0 = 停止中）。 */
-    timer: { duration: 0, remaining: 0, endAt: 0 }
+    /* entry: 入力中の数字列 / duration: 設定した長さ / remaining: 残り /
+       endAt: 動作中の終了時刻（0 = 停止中）。 */
+    timer: { entry: "", duration: 0, remaining: 0, endAt: 0 },
+    /* ポモドーロの進行状態。remaining はフェーズの残り。 */
+    pomo: { phase: "focus", round: 1, remaining: 25 * 60 * 1000, endAt: 0 }
   };
 
   /* アクセントの選択肢（デザイントークンで確定している4色）。 */
@@ -1069,7 +1141,7 @@
   }
 
   /* 保存データは壊れている可能性があるので、形の合わないものは捨てる。 */
-  if (["clock", "timer", "alarm"].indexOf(settings.tab) < 0) settings.tab = "clock";
+  if (["clock", "timer", "pomo", "alarm"].indexOf(settings.tab) < 0) settings.tab = "clock";
 
   if (!Array.isArray(settings.alarms)) settings.alarms = [];
   settings.alarms = settings.alarms.filter(function (alarm) {
@@ -1083,14 +1155,31 @@
   });
 
   var timer = settings.timer;
-  if (!timer || typeof timer !== "object") timer = settings.timer = { duration: 0, remaining: 0, endAt: 0 };
+  if (!timer || typeof timer !== "object") timer = settings.timer = { entry: "", duration: 0, remaining: 0, endAt: 0 };
   ["duration", "remaining", "endAt"].forEach(function (key) {
     if (typeof timer[key] !== "number" || !isFinite(timer[key]) || timer[key] < 0) timer[key] = 0;
   });
+  if (typeof timer.entry !== "string" || !/^\d{0,6}$/.test(timer.entry)) timer.entry = "";
   /* 動作中のまま閉じて、開き直したらもう終わっていた場合は 0 で止めておく。 */
   if (timer.endAt && timer.endAt <= Date.now()) {
     timer.endAt = 0;
     timer.remaining = 0;
+  }
+
+  if (!settings.pomo || typeof settings.pomo !== "object") {
+    settings.pomo = { phase: "focus", round: 1, remaining: 25 * 60 * 1000, endAt: 0 };
+  }
+  if (["focus", "rest", "long"].indexOf(settings.pomo.phase) < 0) settings.pomo.phase = "focus";
+  if (typeof settings.pomo.round !== "number" ||
+      settings.pomo.round < 1 || settings.pomo.round > 4) settings.pomo.round = 1;
+  ["remaining", "endAt"].forEach(function (key) {
+    if (typeof settings.pomo[key] !== "number" || !isFinite(settings.pomo[key]) ||
+        settings.pomo[key] < 0) settings.pomo[key] = 0;
+  });
+  /* 閉じているあいだにフェーズが終わっていたら、一時停止した状態で開く。 */
+  if (settings.pomo.endAt && settings.pomo.endAt <= Date.now()) {
+    settings.pomo.endAt = 0;
+    settings.pomo.remaining = 0;
   }
 
   function persist() {
@@ -1195,6 +1284,9 @@
     persist();
     applyFooterLabels();
     render(new Date(), true);
+    /* アラーム一覧の表記も追従させる。関数は後方で定義されるが、
+       クリック時には揃っているので問題ない。 */
+    renderAlarms();
   });
 
   $("seconds").addEventListener("click", function () {
@@ -1630,7 +1722,7 @@
 
   /* ---- タブ切替 ---- */
 
-  var VIEWS = { clock: "viewClock", timer: "viewTimer", alarm: "viewAlarm" };
+  var VIEWS = { clock: "viewClock", timer: "viewTimer", pomo: "viewPomo", alarm: "viewAlarm" };
   var tabButtons = Array.prototype.slice.call(document.querySelectorAll(".tabs button"));
 
   function applyTab() {
@@ -1726,51 +1818,120 @@
 
   function timerRunning() { return timer.endAt > 0; }
 
+  /* 停止中で残りが無い = 時間の入力を受け付けている状態。 */
+  function timerEntryMode() { return !timerRunning() && timer.remaining <= 0; }
+
+  /* 前回の入力値が表示に残っているだけの状態かどうか。 */
+  var entryStale = false;
+
+  /* 入力は電子レンジ式。数字が右から詰まっていき、"2000" は 20:00（20分）、
+     "13000" は 1:30:00 と読む。時・分・秒それぞれ2桁で最大6桁。 */
+  function entrySeconds() {
+    var padded = ("000000" + timer.entry).slice(-6);
+    return Number(padded.slice(0, 2)) * 3600 +
+      Number(padded.slice(2, 4)) * 60 +
+      Number(padded.slice(4, 6));
+  }
+
+  /* 入力中の表示。未入力の上位桁は薄く、打った桁だけ白く出す。 */
+  function renderTimerEntry() {
+    var padded = ("000000" + timer.entry).slice(-6);
+    var text = padded.slice(0, 2) + ":" + padded.slice(2, 4) + ":" + padded.slice(4, 6);
+    var digitPositions = [0, 1, 3, 4, 6, 7];
+    var brightFrom = timer.entry.length > 0 ? digitPositions[6 - timer.entry.length] : text.length;
+    var key = text + "@" + brightFrom;
+    if (previous.timerEntry === key) return;
+    previous.timerEntry = key;
+    previous.timerDisplay = null;
+    var display = $("timerDisplay");
+    display.textContent = "";
+    var dim = document.createElement("span");
+    dim.style.color = "var(--text-axis)";
+    dim.textContent = text.slice(0, brightFrom);
+    var bright = document.createElement("span");
+    bright.textContent = text.slice(brightFrom);
+    display.appendChild(dim);
+    display.appendChild(bright);
+  }
+
+  function writeTimerDisplay(text) {
+    if (previous.timerDisplay === text) return;
+    previous.timerDisplay = text;
+    previous.timerEntry = null;
+    $("timerDisplay").textContent = text;
+  }
+
   function applyTimerControls() {
     $("timerStart").textContent = timerRunning() ? "PAUSE" : "START";
-    $("timerStart").disabled = !timerRunning() && timer.remaining <= 0;
-    $("timerReset").disabled = timerRunning() || timer.duration <= 0;
-    Array.prototype.forEach.call(
-      $("timerPresets").querySelectorAll("button"),
-      function (button) { button.disabled = timerRunning(); }
-    );
+    $("timerStart").disabled = timerEntryMode() && entrySeconds() === 0;
+    $("timerReset").disabled = timerRunning() ||
+      (timerEntryMode() && timer.entry.length === 0);
+    $("timerKeypad").dataset.disabled = String(!timerEntryMode());
   }
 
   function timerTick(nowMs) {
+    if (timerEntryMode()) {
+      renderTimerEntry();
+      setBar("timerBar", 0);
+      return;
+    }
     var remaining = timerRunning() ? timer.endAt - nowMs : timer.remaining;
     if (timerRunning() && remaining <= 0) {
       timer.endAt = 0;
       timer.remaining = 0;
-      remaining = 0;
+      entryStale = true;
       persist();
       applyTimerControls();
       startRing("TIMER", formatDuration(timer.duration));
+      renderTimerEntry();
+      setBar("timerBar", 0);
+      return;
     }
-    write("timerDisplay", formatDuration(remaining));
+    writeTimerDisplay(formatDuration(remaining));
     setBar("timerBar", timer.duration > 0 ? remaining / timer.duration : 0);
   }
 
-  Array.prototype.forEach.call(
-    $("timerPresets").querySelectorAll("button[data-add]"),
-    function (button) {
-      button.addEventListener("click", function () {
-        ensureAudio();
-        timer.duration += Number(button.dataset.add) * 1000;
-        timer.remaining += Number(button.dataset.add) * 1000;
-        persist();
-        applyTimerControls();
-        timerTick(Date.now());
-      });
+  function timerKey(key) {
+    if (!timerEntryMode()) return;
+    ensureAudio();
+    if (key === "back") {
+      timer.entry = timer.entry.slice(0, -1);
+      entryStale = false;
+    } else {
+      /* 終了・リセット直後は前回の値が残っているだけなので、
+         最初の数字で打ち直し扱いにする。6桁で満杯、あふれは無視。 */
+      if (entryStale) timer.entry = "";
+      entryStale = false;
+      timer.entry = (timer.entry + key).slice(0, 6);
     }
-  );
-
-  $("timerClear").addEventListener("click", function () {
-    timer.duration = 0;
-    timer.remaining = 0;
-    timer.endAt = 0;
     persist();
     applyTimerControls();
     timerTick(Date.now());
+  }
+
+  Array.prototype.forEach.call(
+    $("timerKeypad").querySelectorAll("button"),
+    function (button) {
+      button.addEventListener("click", function () { timerKey(button.dataset.key); });
+    }
+  );
+
+  /* タイマーのタブを開いているあいだは、物理キーボードでもそのまま打てる。 */
+  document.addEventListener("keydown", function (event) {
+    if (settings.tab !== "timer") return;
+    if (!birthModal.hidden || !alarmModal.hidden || !$("ringScrim").hidden) return;
+    var target = event.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+    if (/^\d$/.test(event.key)) {
+      timerKey(event.key);
+      event.preventDefault();
+    } else if (event.key === "Backspace") {
+      timerKey("back");
+      event.preventDefault();
+    } else if (event.key === "Enter") {
+      $("timerStart").click();
+      event.preventDefault();
+    }
   });
 
   $("timerStart").addEventListener("click", function () {
@@ -1778,7 +1939,13 @@
     if (timerRunning()) {
       timer.remaining = Math.max(0, timer.endAt - Date.now());
       timer.endAt = 0;
-    } else if (timer.remaining > 0) {
+    } else if (timerEntryMode()) {
+      var seconds = entrySeconds();
+      if (seconds === 0) return;
+      timer.duration = seconds * 1000;
+      timer.remaining = seconds * 1000;
+      timer.endAt = Date.now() + timer.remaining;
+    } else {
       timer.endAt = Date.now() + timer.remaining;
     }
     persist();
@@ -1786,12 +1953,117 @@
     timerTick(Date.now());
   });
 
+  /* RESET は入力状態に戻す。入力中に押したときは入力そのものを消す。 */
   $("timerReset").addEventListener("click", function () {
-    timer.endAt = 0;
-    timer.remaining = timer.duration;
+    if (timerEntryMode()) {
+      timer.entry = "";
+      entryStale = false;
+    } else {
+      timer.endAt = 0;
+      timer.remaining = 0;
+      entryStale = true;
+    }
     persist();
     applyTimerControls();
     timerTick(Date.now());
+  });
+
+  /* ---- ポモドーロ ----
+     25分の集中と5分の休憩を4ラウンド、締めに15分の長い休憩。 */
+
+  var POMO_PHASES = {
+    focus: { seconds: 25 * 60, label: "FOCUS" },
+    rest: { seconds: 5 * 60, label: "BREAK" },
+    long: { seconds: 15 * 60, label: "LONG BREAK" }
+  };
+  var POMO_ROUNDS = 4;
+
+  var pomo = settings.pomo;
+
+  function pomoPhaseMs() { return POMO_PHASES[pomo.phase].seconds * 1000; }
+
+  function pomoRunning() { return pomo.endAt > 0; }
+
+  function applyPomo() {
+    var label = POMO_PHASES[pomo.phase].label +
+      (pomo.phase === "focus" ? " · ROUND " + pomo.round + " OF " + POMO_ROUNDS : "");
+    write("pomoPhase", label);
+    $("pomoStart").textContent = pomoRunning() ? "PAUSE" : "START";
+
+    var dots = $("pomoDots");
+    dots.innerHTML = "";
+    for (var i = 1; i <= POMO_ROUNDS; i++) {
+      var dot = document.createElement("span");
+      dot.className = "pomo-dot";
+      if (i < pomo.round || (i === pomo.round && pomo.phase !== "focus")) {
+        dot.dataset.state = "done";
+      } else if (i === pomo.round) {
+        dot.dataset.state = "current";
+      }
+      dots.appendChild(dot);
+    }
+  }
+
+  /* 次のフェーズへ。集中→休憩→次のラウンドの集中…、最後は長い休憩で一巡。 */
+  function pomoAdvance(keepRunning) {
+    if (pomo.phase === "focus") {
+      pomo.phase = pomo.round < POMO_ROUNDS ? "rest" : "long";
+    } else if (pomo.phase === "rest") {
+      pomo.phase = "focus";
+      pomo.round += 1;
+    } else {
+      pomo.phase = "focus";
+      pomo.round = 1;
+      keepRunning = false;
+    }
+    pomo.remaining = pomoPhaseMs();
+    pomo.endAt = keepRunning ? Date.now() + pomo.remaining : 0;
+    persist();
+    applyPomo();
+  }
+
+  function pomoTick(nowMs) {
+    var remaining = pomoRunning() ? pomo.endAt - nowMs : pomo.remaining;
+    if (pomoRunning() && remaining <= 0) {
+      var finished = pomo.phase;
+      pomoAdvance(true);
+      startRing(
+        "POMODORO — " + (finished === "focus" ? "休憩に入ります" : "集中に戻ります"),
+        formatDuration(pomoPhaseMs())
+      );
+      remaining = pomoRunning() ? pomo.endAt - nowMs : pomo.remaining;
+    }
+    write("pomoDisplay", formatDuration(remaining));
+    setBar("pomoBar", remaining / pomoPhaseMs());
+  }
+
+  $("pomoStart").addEventListener("click", function () {
+    ensureAudio();
+    if (pomoRunning()) {
+      pomo.remaining = Math.max(0, pomo.endAt - Date.now());
+      pomo.endAt = 0;
+    } else {
+      pomo.endAt = Date.now() + pomo.remaining;
+    }
+    persist();
+    applyPomo();
+    pomoTick(Date.now());
+  });
+
+  $("pomoSkip").addEventListener("click", function () {
+    ensureAudio();
+    pomoAdvance(pomoRunning());
+    pomoTick(Date.now());
+  });
+
+  $("pomoReset").addEventListener("click", function () {
+    pomo.phase = "focus";
+    pomo.round = 1;
+    pomo.remaining = pomoPhaseMs();
+    pomo.endAt = 0;
+    persist();
+    applyPomo();
+    pomoTick(Date.now());
   });
 
   /* ---- アラーム ---- */
@@ -1808,6 +2080,15 @@
   var alarmMask = setupMask(
     alarmInput, "alarmGhostFill", "alarmGhostRest", [2, 2], ":", "__:__", hideAlarmError
   );
+
+  /* 保存は常に24時間表記。表示だけフッターの 24H/12H 設定に合わせる。 */
+  function alarmDisplayTime(time24) {
+    if (settings.use24h) return time24;
+    var parts = time24.split(":");
+    var hours = Number(parts[0]);
+    var shown = hours % 12 === 0 ? 12 : hours % 12;
+    return pad(shown) + ":" + parts[1] + (hours < 12 ? " AM" : " PM");
+  }
 
   function renderAlarms() {
     var list = $("alarmList");
@@ -1828,7 +2109,7 @@
 
       var time = document.createElement("span");
       time.className = "alarm-time";
-      time.textContent = alarm.time;
+      time.textContent = alarmDisplayTime(alarm.time);
       row.appendChild(time);
 
       var toggle = document.createElement("button");
@@ -1936,6 +2217,7 @@
   setInterval(function () {
     var now = new Date();
     timerTick(now.getTime());
+    pomoTick(now.getTime());
     alarmTick(now);
   }, 1000);
 
@@ -1978,6 +2260,10 @@
   renderAlarms();
   applyTimerControls();
   timerTick(Date.now());
+  /* 閉じているあいだにフェーズが終わっていたら、次のフェーズを一時停止で用意する。 */
+  if (!pomoRunning() && pomo.remaining <= 0) pomoAdvance(false);
+  applyPomo();
+  pomoTick(Date.now());
   reportFontStatus();
   fit();
   render(new Date(), true);

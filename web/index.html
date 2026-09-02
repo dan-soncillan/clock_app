@@ -307,11 +307,12 @@
      気づくまで止まらない。画面全体をアクセント色で強く明滅させて、
      視界の隅からでも「鳴っている」ことが分かるようにする。 */
 
+  /* 枠線は白。明フェーズで周囲の白い光に溶け込む。 */
   .ring .modal {
     position: relative;
     z-index: 1;
     align-items: center;
-    border-color: var(--accent);
+    border-color: var(--text-primary);
   }
 
   .ring-time {
@@ -1703,17 +1704,35 @@
     if (event.target === birthModal) closeBirthModal();
   });
 
-  /* ESC は「開いているものを閉じる」が最優先。何も開いていなければ
-     表示中のタブのリセットとして働く。 */
+  /* ESC は「開いているものを閉じる」→「表示中のタブのリセット」→
+     「フルスクリーン解除」の順。フルスクリーン中の ESC は本来ブラウザの
+     解除操作に取られてしまうが、Keyboard Lock（下の syncKeyboardLock）で
+     アプリ側が先に受け取れるようにしている。 */
+  var lastEscapeKeyAt = 0;
+
   document.addEventListener("keydown", function (event) {
     if (event.key !== "Escape") return;
+    /* IME の二重発火で「閉じる」と「リセット」が同時に走らないようにする。 */
+    var pressedAt = Date.now();
+    if (pressedAt - lastEscapeKeyAt < 100) return;
+    lastEscapeKeyAt = pressedAt;
     if (!birthModal.hidden) { closeBirthModal(); return; }
     var alarmModalElement = $("alarmModal");
     if (alarmModalElement && !alarmModalElement.hidden) { alarmModalElement.hidden = true; return; }
     var ringElement = $("ringScrim");
     if (ringElement && !ringElement.hidden) { stopRing(); return; }
-    if (settings.tab === "timer") $("timerReset").click();
-    else if (settings.tab === "pomo") $("pomoReset").click();
+    if (settings.tab === "timer" && !$("timerReset").disabled) {
+      $("timerReset").click();
+      return;
+    }
+    if (settings.tab === "pomo" && !pomoIsInitial()) {
+      $("pomoReset").click();
+      return;
+    }
+    /* 閉じるものもリセットするものも無いときだけ、フルスクリーンを解除する。 */
+    if (fullscreenElement()) {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    }
   });
 
   $("birthForm").addEventListener("submit", function (event) {
@@ -1776,10 +1795,40 @@
     var active = !!fullscreenElement();
     $("fullscreenIcon").setAttribute("d", active ? ICON_EXIT : ICON_ENTER);
     fullscreenButton.setAttribute("aria-label", active ? "フルスクリーンを解除" : "フルスクリーン");
+    syncKeyboardLock();
+  }
+
+  /* フルスクリーン中は ESC がブラウザの解除操作に取られ、アプリの
+     リセットに使えない。Keyboard Lock（Chrome / Edge）で ESC を
+     アプリ側が受け取れるようにする。ブラウザ側の解除は ESC 長押しに
+     変わり、対応していないブラウザでは従来どおり ESC で解除される。 */
+  function syncKeyboardLock() {
+    if (!navigator.keyboard || !navigator.keyboard.lock) return;
+    if (fullscreenElement()) {
+      navigator.keyboard.lock(["Escape"]).catch(function () {});
+    } else {
+      navigator.keyboard.unlock();
+    }
   }
 
   document.addEventListener("fullscreenchange", applyFullscreenLabel);
   document.addEventListener("webkitfullscreenchange", applyFullscreenLabel);
+
+  /* Ctrl+F でもフルスクリーンを切り替えられる（macOS の検索は ⌘F なので
+     衝突しない）。IME の二重発火で切替→即解除にならないよう重複を丸める。 */
+  var lastFullscreenKeyAt = 0;
+
+  document.addEventListener("keydown", function (event) {
+    if (!event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key !== "f" && event.key !== "F") return;
+    var target = event.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+    var pressedAt = Date.now();
+    if (pressedAt - lastFullscreenKeyAt < 300) return;
+    lastFullscreenKeyAt = pressedAt;
+    fullscreenButton.click();
+    event.preventDefault();
+  });
 
   /* ---- タブ切替 ---- */
 
@@ -1817,12 +1866,18 @@
   /* Tab / Shift+Tab で画面を循環切替する。ダイアログを開いているときと
      入力欄の中では、本来のフォーカス移動を邪魔しない。 */
   var TAB_ORDER = ["clock", "timer", "pomo", "alarm"];
+  var lastTabKeyAt = 0;
 
   document.addEventListener("keydown", function (event) {
-    if (event.key !== "Tab") return;
+    if (event.key !== "Tab" || event.repeat) return;
     if (!$("birthModal").hidden || !$("alarmModal").hidden || !$("ringScrim").hidden) return;
     var target = event.target;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+    /* IME が ON だと 1 打で keydown が 2 回来ることがあり、
+       2 個先のタブへ飛んでしまう。時間で重複を丸める。 */
+    var pressedAt = Date.now();
+    if (pressedAt - lastTabKeyAt < 100) return;
+    lastTabKeyAt = pressedAt;
     var index = TAB_ORDER.indexOf(settings.tab);
     var step = event.shiftKey ? TAB_ORDER.length - 1 : 1;
     settings.tab = TAB_ORDER[(index + step) % TAB_ORDER.length];
@@ -2017,13 +2072,28 @@
   var lastTimerKeyAt = 0;
   var lastTimerKeyDigit = "";
 
+  var lastStartKeyAt = 0;
+
   document.addEventListener("keydown", function (event) {
     if (settings.tab !== "timer") return;
-    if (event.isComposing || event.keyCode === 229 || event.repeat) return;
     if (!birthModal.hidden || !alarmModal.hidden || !$("ringScrim").hidden) return;
     var target = event.target;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" ||
         target.tagName === "BUTTON")) return;
+
+    /* IME の確定 Enter は keyCode 229 で届くので、229 を弾く方式だと
+       Enter が一切効かなくなる。Enter / Space は時間で重複を丸める。 */
+    if (event.key === "Enter" || event.key === " ") {
+      var pressedAt = Date.now();
+      if (pressedAt - lastStartKeyAt < 150) return;
+      lastStartKeyAt = pressedAt;
+      $("timerStart").click();
+      event.preventDefault();
+      return;
+    }
+
+    /* 数字と Backspace は IME の合成イベント・リピートを無視する。 */
+    if (event.isComposing || event.keyCode === 229 || event.repeat) return;
     if (/^\d$/.test(event.key)) {
       var now = Date.now();
       /* 人間には出せない速さ（25ms未満）の同じ数字だけを重複と見なす。 */
@@ -2034,9 +2104,6 @@
       event.preventDefault();
     } else if (event.key === "Backspace") {
       timerKey("back");
-      event.preventDefault();
-    } else if (event.key === "Enter" || event.key === " ") {
-      $("timerStart").click();
       event.preventDefault();
     }
   });
@@ -2090,6 +2157,12 @@
   function pomoPhaseMs() { return POMO_PHASES[pomo.phase].seconds * 1000; }
 
   function pomoRunning() { return pomo.endAt > 0; }
+
+  /* まっさらな状態（リセットしても何も変わらない）かどうか。 */
+  function pomoIsInitial() {
+    return pomo.phase === "focus" && pomo.round === 1 &&
+      !pomoRunning() && pomo.remaining === pomoPhaseMs();
+  }
 
   function applyPomo() {
     var label = POMO_PHASES[pomo.phase].label +
@@ -2163,7 +2236,10 @@
     pomoTick(Date.now());
   });
 
-  /* ポモドーロも Enter / Space で開始・一時停止できる。 */
+  /* ポモドーロも Enter / Space で開始・一時停止できる。
+     IME の二重発火で開始→即停止にならないよう、時間で重複を丸める。 */
+  var lastPomoKeyAt = 0;
+
   document.addEventListener("keydown", function (event) {
     if (settings.tab !== "pomo") return;
     if (event.key !== "Enter" && event.key !== " ") return;
@@ -2171,6 +2247,9 @@
     var target = event.target;
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" ||
         target.tagName === "BUTTON")) return;
+    var pressedAt = Date.now();
+    if (pressedAt - lastPomoKeyAt < 150) return;
+    lastPomoKeyAt = pressedAt;
     $("pomoStart").click();
     event.preventDefault();
   });

@@ -237,6 +237,12 @@
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
+  /* ポモドーロの下に置く「今日の残り」。時計タブと同じ構成の縮小版。 */
+  .pomo-today {
+    width: 100%;
+    margin-top: 4px;
+  }
+
   /* --- アラーム --- */
 
   .alarm-inner { width: 460px; }
@@ -995,6 +1001,18 @@
         <button type="button" id="pomoReset">RESET</button>
       </div>
       <p class="alarm-note">25分の集中 × 4ラウンド。合間に5分、4ラウンド目の後に15分の休憩。</p>
+
+      <div class="group pomo-today">
+        <div class="label-row">
+          <span class="section-label">REMAINING TODAY</span>
+          <span class="label-group">
+            <span class="label-value" id="pomoToday">00:00</span>
+            <span class="label-value" id="pomoTodayPercent">0%</span>
+          </span>
+        </div>
+        <div class="bar"><span id="pomoDayBar"></span></div>
+        <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
+      </div>
     </div>
   </div>
 
@@ -1388,6 +1406,11 @@
     write("remainToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
     write("todayPercent", percentText(remainingMinutes / 1440));
     setBar("dayBar", remainingMinutes / 1440);
+
+    /* ポモドーロのタブにも同じ「今日の残り」を出す。 */
+    write("pomoToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
+    write("pomoTodayPercent", percentText(remainingMinutes / 1440));
+    setBar("pomoDayBar", remainingMinutes / 1440);
 
     /* 今月の残り。 */
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();

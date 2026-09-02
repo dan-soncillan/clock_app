@@ -1646,13 +1646,17 @@
     if (event.target === birthModal) closeBirthModal();
   });
 
+  /* ESC は「開いているものを閉じる」が最優先。何も開いていなければ
+     表示中のタブのリセットとして働く。 */
   document.addEventListener("keydown", function (event) {
     if (event.key !== "Escape") return;
-    if (!birthModal.hidden) closeBirthModal();
+    if (!birthModal.hidden) { closeBirthModal(); return; }
     var alarmModalElement = $("alarmModal");
-    if (alarmModalElement && !alarmModalElement.hidden) alarmModalElement.hidden = true;
+    if (alarmModalElement && !alarmModalElement.hidden) { alarmModalElement.hidden = true; return; }
     var ringElement = $("ringScrim");
-    if (ringElement && !ringElement.hidden) stopRing();
+    if (ringElement && !ringElement.hidden) { stopRing(); return; }
+    if (settings.tab === "timer") $("timerReset").click();
+    else if (settings.tab === "pomo") $("pomoReset").click();
   });
 
   $("birthForm").addEventListener("submit", function (event) {
@@ -1743,6 +1747,14 @@
          外しておけば、タイマーではそのまま数字と Enter が入力になる。 */
       button.blur();
     });
+  });
+
+  /* クリックしたボタンにフォーカスが残ると、以降の Enter / Space が
+     そのボタンの再クリックになってしまう。ダイアログの中以外では
+     クリック後にフォーカスを外し、ショートカットの対象を一定に保つ。 */
+  document.addEventListener("click", function (event) {
+    var button = event.target && event.target.closest && event.target.closest("button");
+    if (button && !button.closest(".modal")) button.blur();
   });
 
   /* Tab / Shift+Tab で画面を循環切替する。ダイアログを開いているときと
@@ -1884,8 +1896,8 @@
   function applyTimerControls() {
     $("timerStart").textContent = timerRunning() ? "PAUSE" : "START";
     $("timerStart").disabled = timerEntryMode() && entrySeconds() === 0;
-    $("timerReset").disabled = timerRunning() ||
-      (timerEntryMode() && timer.entry.length === 0);
+    /* RESET は動作中でも押せる（キャンセルとして入力状態に戻す）。 */
+    $("timerReset").disabled = timerEntryMode() && timer.entry.length === 0;
     $("timerKeypad").dataset.disabled = String(!timerEntryMode());
   }
 
@@ -1948,7 +1960,8 @@
     if (event.isComposing || event.keyCode === 229 || event.repeat) return;
     if (!birthModal.hidden || !alarmModal.hidden || !$("ringScrim").hidden) return;
     var target = event.target;
-    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" ||
+        target.tagName === "BUTTON")) return;
     if (/^\d$/.test(event.key)) {
       var now = Date.now();
       /* 人間には出せない速さ（25ms未満）の同じ数字だけを重複と見なす。 */
@@ -1960,7 +1973,7 @@
     } else if (event.key === "Backspace") {
       timerKey("back");
       event.preventDefault();
-    } else if (event.key === "Enter") {
+    } else if (event.key === "Enter" || event.key === " ") {
       $("timerStart").click();
       event.preventDefault();
     }
@@ -2086,6 +2099,18 @@
     ensureAudio();
     pomoAdvance(pomoRunning());
     pomoTick(Date.now());
+  });
+
+  /* ポモドーロも Enter / Space で開始・一時停止できる。 */
+  document.addEventListener("keydown", function (event) {
+    if (settings.tab !== "pomo") return;
+    if (event.key !== "Enter" && event.key !== " ") return;
+    if (!birthModal.hidden || !alarmModal.hidden || !$("ringScrim").hidden) return;
+    var target = event.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" ||
+        target.tagName === "BUTTON")) return;
+    $("pomoStart").click();
+    event.preventDefault();
   });
 
   $("pomoReset").addEventListener("click", function () {

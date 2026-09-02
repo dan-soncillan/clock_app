@@ -1745,6 +1745,23 @@
     });
   });
 
+  /* Tab / Shift+Tab で画面を循環切替する。ダイアログを開いているときと
+     入力欄の中では、本来のフォーカス移動を邪魔しない。 */
+  var TAB_ORDER = ["clock", "timer", "pomo", "alarm"];
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key !== "Tab") return;
+    if (!$("birthModal").hidden || !$("alarmModal").hidden || !$("ringScrim").hidden) return;
+    var target = event.target;
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) return;
+    var index = TAB_ORDER.indexOf(settings.tab);
+    var step = event.shiftKey ? TAB_ORDER.length - 1 : 1;
+    settings.tab = TAB_ORDER[(index + step) % TAB_ORDER.length];
+    persist();
+    applyTab();
+    event.preventDefault();
+  });
+
   /* ---- サウンド ----
      ブラウザの自動再生制限があるので、AudioContext はボタン操作の中で
      用意しておく。用意できていない環境でも画面の点滅だけは出す。 */

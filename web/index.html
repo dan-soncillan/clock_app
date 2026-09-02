@@ -122,30 +122,49 @@
     min-height: 0;
   }
 
-  /* タブで隠すビュー。Pages 側には [hidden] の共通規則が無いので明示する。 */
-  .content[hidden],
-  .view[hidden] { display: none; }
-
-  .view {
-    flex: 1;
+  /* 左半分だけがタブで切り替わる。右のデジタルパネルは全タブ共通。 */
+  .left {
+    position: relative;
+    width: 512px;
+    min-height: 512px;
+    flex: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 0;
+  }
+
+  /* タブで隠すビュー。Pages 側には [hidden] の共通規則が無いので明示する。 */
+  .left > [hidden] { display: none; }
+
+  .left-view,
+  .view {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .view-inner {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 26px;
-    width: 640px;
-    max-width: 100%;
+    gap: 22px;
+    width: 100%;
+    max-width: 440px;
   }
 
   /* --- タイマー --- */
 
-  .timer-display { font-size: 112px; }
+  /* 左ペイン（512px）に収まるサイズ。入力中は HH:MM:SS の 8 文字に
+     なるので、はみ出さないところまで自動で縮める。 */
+  .timer-display {
+    font-size: 84px;
+    max-width: 100%;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .timer-display.wide { font-size: 60px; }
 
   .timer-bar { width: 100%; }
 
@@ -237,25 +256,10 @@
     box-shadow: inset 0 0 0 2px var(--accent);
   }
 
-  /* ポモドーロの下に置く「今日の残り」。時計タブと同じ構成の縮小版。 */
-  .pomo-today {
-    width: 100%;
-    margin-top: 4px;
-  }
-
-  /* ポモドーロの上に出す現在時刻。太さはウェイト設定に従う。 */
-  .pomo-clock {
-    font-size: 32px;
-    font-weight: var(--weight);
-    font-variation-settings: "wght" var(--weight);
-    font-variant-numeric: tabular-nums;
-    line-height: 1;
-    color: var(--text-secondary);
-  }
 
   /* --- アラーム --- */
 
-  .alarm-inner { width: 460px; }
+  .alarm-inner { width: 100%; }
 
   .alarm-list {
     width: 100%;
@@ -928,11 +932,69 @@
     <button type="button" data-tab="alarm" aria-pressed="false">ALARM</button>
   </nav>
 
-  <div class="content" id="viewClock">
+  <div class="content">
+    <div class="left">
+      <div class="left-view" id="viewClock">
     <div class="dial" id="dial" aria-hidden="true">
       <div class="hand hour" id="hour"></div>
       <div class="hand minute" id="minute"></div>
       <div class="hand second" id="second"></div>
+    </div>
+
+    </div>
+
+      <div class="view" id="viewTimer" hidden>
+    <div class="view-inner">
+      <span class="section-label">TIMER</span>
+      <div class="hhmm timer-display" id="timerDisplay">00:00</div>
+      <div class="bar timer-bar"><span id="timerBar"></span></div>
+      <div class="keypad" id="timerKeypad" aria-label="タイマーの時間入力">
+        <button type="button" data-key="1">1</button>
+        <button type="button" data-key="2">2</button>
+        <button type="button" data-key="3">3</button>
+        <button type="button" data-key="4">4</button>
+        <button type="button" data-key="5">5</button>
+        <button type="button" data-key="6">6</button>
+        <button type="button" data-key="7">7</button>
+        <button type="button" data-key="8">8</button>
+        <button type="button" data-key="9">9</button>
+        <button type="button" data-key="00">00</button>
+        <button type="button" data-key="0">0</button>
+        <button type="button" data-key="back" aria-label="1桁削除">⌫</button>
+      </div>
+      <div class="chips">
+        <button type="button" class="primary-chip" id="timerStart">START</button>
+        <button type="button" id="timerReset">RESET</button>
+      </div>
+    </div>
+  </div>
+
+      <div class="view" id="viewPomo" hidden>
+    <div class="view-inner">
+      <span class="section-label" id="pomoPhase">FOCUS · ROUND 1 OF 4</span>
+      <div class="hhmm timer-display" id="pomoDisplay">25:00</div>
+      <div class="bar timer-bar"><span id="pomoBar"></span></div>
+      <div class="pomo-dots" id="pomoDots" aria-hidden="true"></div>
+      <div class="chips">
+        <button type="button" class="primary-chip" id="pomoStart">START</button>
+        <button type="button" id="pomoSkip">SKIP</button>
+        <button type="button" id="pomoReset">RESET</button>
+      </div>
+      <p class="alarm-note">25分の集中 × 4ラウンド。合間に5分、4ラウンド目の後に15分の休憩。</p>
+    </div>
+  </div>
+
+      <div class="view" id="viewAlarm" hidden>
+    <div class="view-inner alarm-inner">
+      <span class="section-label">ALARMS</span>
+      <div class="alarm-list" id="alarmList"></div>
+      <div class="chips">
+        <button type="button" class="primary-chip" id="alarmAdd">+ NEW ALARM</button>
+      </div>
+      <p class="alarm-note">アラームとタイマーの音は、このページ（またはインストールしたアプリ）を
+        開いているあいだだけ鳴ります。</p>
+    </div>
+  </div>
     </div>
 
     <div class="panel">
@@ -1010,72 +1072,6 @@
           <div class="axis" id="lifeAxis"></div>
         </div>
       </section>
-    </div>
-  </div>
-
-  <div class="view" id="viewTimer" hidden>
-    <div class="view-inner">
-      <span class="section-label">TIMER</span>
-      <div class="hhmm timer-display" id="timerDisplay">00:00</div>
-      <div class="bar timer-bar"><span id="timerBar"></span></div>
-      <div class="keypad" id="timerKeypad" aria-label="タイマーの時間入力">
-        <button type="button" data-key="1">1</button>
-        <button type="button" data-key="2">2</button>
-        <button type="button" data-key="3">3</button>
-        <button type="button" data-key="4">4</button>
-        <button type="button" data-key="5">5</button>
-        <button type="button" data-key="6">6</button>
-        <button type="button" data-key="7">7</button>
-        <button type="button" data-key="8">8</button>
-        <button type="button" data-key="9">9</button>
-        <button type="button" data-key="00">00</button>
-        <button type="button" data-key="0">0</button>
-        <button type="button" data-key="back" aria-label="1桁削除">⌫</button>
-      </div>
-      <div class="chips">
-        <button type="button" class="primary-chip" id="timerStart">START</button>
-        <button type="button" id="timerReset">RESET</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="view" id="viewPomo" hidden>
-    <div class="view-inner">
-      <span class="pomo-clock" id="pomoClock">00:00</span>
-      <span class="section-label" id="pomoPhase">FOCUS · ROUND 1 OF 4</span>
-      <div class="hhmm timer-display" id="pomoDisplay">25:00</div>
-      <div class="bar timer-bar"><span id="pomoBar"></span></div>
-      <div class="pomo-dots" id="pomoDots" aria-hidden="true"></div>
-      <div class="chips">
-        <button type="button" class="primary-chip" id="pomoStart">START</button>
-        <button type="button" id="pomoSkip">SKIP</button>
-        <button type="button" id="pomoReset">RESET</button>
-      </div>
-      <p class="alarm-note">25分の集中 × 4ラウンド。合間に5分、4ラウンド目の後に15分の休憩。</p>
-
-      <div class="group pomo-today">
-        <div class="label-row">
-          <span class="section-label">REMAINING TODAY</span>
-          <span class="label-group">
-            <span class="label-value" id="pomoToday">00:00</span>
-            <span class="label-value" id="pomoTodayPercent">0%</span>
-          </span>
-        </div>
-        <div class="bar"><span id="pomoDayBar"></span></div>
-        <div class="axis"><span>24</span><span>18</span><span>12</span><span>06</span><span>0</span></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="view" id="viewAlarm" hidden>
-    <div class="view-inner alarm-inner">
-      <span class="section-label">ALARMS</span>
-      <div class="alarm-list" id="alarmList"></div>
-      <div class="chips">
-        <button type="button" class="primary-chip" id="alarmAdd">+ NEW ALARM</button>
-      </div>
-      <p class="alarm-note">アラームとタイマーの音は、このページ（またはインストールしたアプリ）を
-        開いているあいだだけ鳴ります。</p>
     </div>
   </div>
 
@@ -1459,12 +1455,6 @@
     write("todayPercent", percentText(remainingMinutes / 1440));
     setBar("dayBar", remainingMinutes / 1440);
 
-    /* ポモドーロのタブにも同じ「今日の残り」と現在時刻を出す。 */
-    write("pomoToday", pad(Math.floor(remainingMinutes / 60)) + ":" + pad(remainingMinutes % 60));
-    write("pomoTodayPercent", percentText(remainingMinutes / 1440));
-    setBar("pomoDayBar", remainingMinutes / 1440);
-    write("pomoClock", pad(shown) + ":" + pad(minutes) +
-      (settings.use24h ? "" : (hours < 12 ? " AM" : " PM")));
 
     /* 今月の残り。 */
     var daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
@@ -2043,6 +2033,8 @@
     previous.timerEntry = key;
     previous.timerDisplay = null;
     var display = $("timerDisplay");
+    /* 入力中は HH:MM:SS の 8 文字。左ペインに収まるよう一段小さくする。 */
+    display.classList.add("wide");
     display.textContent = "";
     var dim = document.createElement("span");
     dim.style.color = "var(--text-axis)";
@@ -2057,7 +2049,10 @@
     if (previous.timerDisplay === text) return;
     previous.timerDisplay = text;
     previous.timerEntry = null;
-    $("timerDisplay").textContent = text;
+    var display = $("timerDisplay");
+    /* 1時間以上のカウントダウンも 8 文字になるので同じ扱いにする。 */
+    display.classList.toggle("wide", text.length > 5);
+    display.textContent = text;
   }
 
   function applyTimerControls() {
